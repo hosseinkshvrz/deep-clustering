@@ -54,6 +54,7 @@ if __name__ == "__main__":
     y_valid = y[train_sample_size:]
 
     dec = DEC(doc_dims=doc_dims, latent_dims=latent_dims, ae_type=ae_type, n_clusters=n_clusters)
+
     dec.pretrain(x=x,
                  y=y,
                  x_valid=x_valid,
