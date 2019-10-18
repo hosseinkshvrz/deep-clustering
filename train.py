@@ -1,12 +1,16 @@
 import os
 import argparse
 from time import time
-from sklearn.utils import shuffle
-from datasets import load_data
-from recent.model import DEC
+from comet_ml import Experiment
+from recent import datasets
+from recent.model import DSC
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
+
+experiment = Experiment(api_key="3UuCR8Zz4hqHn9aM9bkR1jXdr",
+                        project_name="dec", workspace="hossein-kshvrz")
 
 if __name__ == "__main__":
     # setting the hyper parameters
@@ -22,6 +26,7 @@ if __name__ == "__main__":
     parser.add_argument('--n_clusters', default=100)
     parser.add_argument('--latent_dims', default=[128], type=list)
     parser.add_argument('--ae_type', default='lstm_ae', type=str)
+    parser.add_argument('--train_mode', default='semi-supervised', type=str)
     args = parser.parse_args()
 
     print(args)
@@ -39,13 +44,15 @@ if __name__ == "__main__":
     n_clusters = args.n_clusters
     latent_dims = args.latent_dims
     ae_type = args.ae_type
+    train_mode = args.train_mode
 
-    x, y, x_test, y_test = load_data(dataset)
+    # strangely doesn't work in my local system, but works on GPU server
+    module = datasets
+    dataset_class = getattr(module, dataset)
+    dataset_obj = dataset_class(train_mode)
+    x, y = dataset_obj.get_data()
 
     doc_dims = x.shape[1:]
-
-    x, y = shuffle(x, y)
-    x_test, y_test = shuffle(x_test, y_test)
 
     train_sample_size = int(len(x) * 0.8)
     x_train = x[:train_sample_size]
@@ -53,9 +60,9 @@ if __name__ == "__main__":
     x_valid = x[train_sample_size:]
     y_valid = y[train_sample_size:]
 
-    dec = DEC(doc_dims=doc_dims, latent_dims=latent_dims, ae_type=ae_type, n_clusters=n_clusters)
+    dsc = DSC(doc_dims=doc_dims, latent_dims=latent_dims, ae_type=ae_type, n_clusters=n_clusters)
 
-    dec.pretrain(x=x,
+    dsc.pretrain(x=x,
                  y=y,
                  x_valid=x_valid,
                  y_valid=y_valid,
@@ -63,16 +70,17 @@ if __name__ == "__main__":
                  batch_size=batch_size,
                  save_dir=save_dir)
 
-    dec.compile(loss='kld')
-    dec.model.summary()
+    dsc.compile(loss='kld')
+    dsc.model.summary()
 
     t0 = time()
-    dec.fit(x=x,
+
+    dsc.fit(x=x,
             y=y,
             x_valid=x_valid,
             y_valid=y_valid,
             tol=tol,
-            maxiter=max_iter,
+            max_iter=max_iter,
             batch_size=batch_size,
             update_interval=update_interval, save_dir=save_dir)
 
