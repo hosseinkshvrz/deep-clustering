@@ -1,12 +1,14 @@
+import ast
 import os
 import argparse
 from time import time
 from comet_ml import Experiment
-from recent import datasets
-from recent.model import DSC
+
+import datasets
+from model import DSC
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 experiment = Experiment(api_key="3UuCR8Zz4hqHn9aM9bkR1jXdr",
@@ -22,11 +24,11 @@ if __name__ == "__main__":
     parser.add_argument('--pretrain_epochs', default=10, type=int)
     parser.add_argument('--update_interval', default=200, type=int)
     parser.add_argument('--tol', default=0.001, type=float)
-    parser.add_argument('--save_dir', default='results')
+    parser.add_argument('--save_dir', default='results/')
     parser.add_argument('--n_clusters', default=100)
-    parser.add_argument('--latent_dims', default=[128], type=list)
+    parser.add_argument('--latent_dims', default='[128]', type=str)
     parser.add_argument('--ae_type', default='lstm_ae', type=str)
-    parser.add_argument('--train_mode', default='semi-supervised', type=str)
+    parser.add_argument('--train_mode', default='semi-supervised', choices=['supervised', 'semi-supervised'])
     args = parser.parse_args()
 
     print(args)
@@ -42,7 +44,7 @@ if __name__ == "__main__":
     tol = args.tol
     save_dir = args.save_dir
     n_clusters = args.n_clusters
-    latent_dims = args.latent_dims
+    latent_dims = ast.literal_eval(args.latent_dims)
     ae_type = args.ae_type
     train_mode = args.train_mode
 
@@ -50,15 +52,9 @@ if __name__ == "__main__":
     module = datasets
     dataset_class = getattr(module, dataset)
     dataset_obj = dataset_class(train_mode)
-    x, y = dataset_obj.get_data()
+    x, y, x_valid, y_valid = dataset_obj.get_data()
 
     doc_dims = x.shape[1:]
-
-    train_sample_size = int(len(x) * 0.8)
-    x_train = x[:train_sample_size]
-    y_train = y[:train_sample_size]
-    x_valid = x[train_sample_size:]
-    y_valid = y[train_sample_size:]
 
     dsc = DSC(doc_dims=doc_dims, latent_dims=latent_dims, ae_type=ae_type, n_clusters=n_clusters)
 
@@ -82,6 +78,7 @@ if __name__ == "__main__":
             tol=tol,
             max_iter=max_iter,
             batch_size=batch_size,
-            update_interval=update_interval, save_dir=save_dir)
+            update_interval=update_interval,
+            save_dir=save_dir)
 
     print('clustering time: ', (time() - t0))

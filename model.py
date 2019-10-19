@@ -1,6 +1,5 @@
 # Deep Sentiment Clustering
 
-import csv
 from time import time
 import numpy as np
 import keras.backend as K
@@ -8,8 +7,9 @@ from keras.engine.topology import Layer, InputSpec
 from keras.models import Model
 from keras import callbacks
 from sklearn.cluster import KMeans
-from recent.auto_encoders import AutoEncoder
-from recent import metrics
+
+from auto_encoders import AutoEncoder
+from metrics import inspect_clusters
 
 
 class ClusteringLayer(Layer):
@@ -88,7 +88,7 @@ class DSC(object):
         self.model = Model(inputs=self.encoder.input, outputs=clustering_layer)
 
     def pretrain(self, x, y=None, x_valid=None, y_valid=None, optimizer='adam', epochs=200,
-                 batch_size=256, save_dir='results/temp'):
+                 batch_size=256, save_dir='results/'):
         print('Pre-training ...')
         self.auto_encoder.summary()
         self.auto_encoder.compile(optimizer=optimizer, loss='mse')
@@ -113,7 +113,7 @@ class DSC(object):
                     km = KMeans(n_clusters=self.n_clusters, n_init=20, n_jobs=4)
                     y_pred = km.fit_predict(features)
 
-                    print('acc: {}'.format(metrics.inspect_clusters(self.y, y_pred, self.n_clusters)))
+                    print('acc: {}'.format(inspect_clusters(self.y, y_pred, self.n_clusters)))
 
             cb.append(PrintACC(x_valid, y_valid, self.n_clusters))
 
@@ -139,11 +139,11 @@ class DSC(object):
         self.model.compile(optimizer=optimizer, loss=loss)
 
     def fit(self, x, y=None, x_valid=None, y_valid=None, max_iter=2e4, batch_size=256, tol=1e-3,
-            update_interval=140, save_dir='./results/temp'):
+            update_interval=140, save_dir='results/'):
 
         print('Update interval', update_interval)
-        save_interval = int(x.shape[0] / batch_size) * 5  # 5 epochs
-        print('Save interval', save_interval)
+        get_acc_interval = int(x.shape[0] / batch_size) * 5  # 5 epochs
+        print('Get accuracy interval', get_acc_interval)
 
         # Step 1: initialize cluster centers using k-means
         print('Initializing cluster centers with k-means.')
@@ -153,11 +153,7 @@ class DSC(object):
         self.model.get_layer(name='clustering').set_weights([kmeans.cluster_centers_])
 
         # Step 2: deep clustering
-        # logging file
-        logfile = open(save_dir + '/dec_log.csv', 'w')
-        log_writer = csv.DictWriter(logfile, fieldnames=['iter', 'acc', 'nmi', 'ari', 'loss'])
-        log_writer.writeheader()
-
+        best_acc = 0
         loss = 0
         index = 0
         index_array = np.arange(x.shape[0])
@@ -170,9 +166,13 @@ class DSC(object):
                 y_pred = q.argmax(1)
                 y_pred_valid = q_valid.argmax(1)
                 if y is not None:
-                    _, w = metrics.inspect_clusters(y, y_pred, self.n_clusters)
-                    acc, _ = metrics.inspect_clusters(y_valid, y_pred_valid, self.n_clusters)
+                    _, w = inspect_clusters(y, y_pred, self.n_clusters)
+                    acc, _ = inspect_clusters(y_valid, y_pred_valid, self.n_clusters)
                     print('Iter {}, Acc: {} '.format(ite, acc), '; loss=', loss)
+                    if acc > best_acc:
+                        best_acc = acc
+                        print('saving model to:', save_dir + '/DEC_model_' + str(ite) + '.h5')
+                        self.model.save_weights(save_dir + '/DEC_model_' + str(ite) + '.h5')
 
                 p = self.target_distribution(q, y, w)
 
@@ -182,22 +182,13 @@ class DSC(object):
                 if ite > 0 and delta_label < tol:
                     print('delta_label ', delta_label, '< tol ', tol)
                     print('Reached tolerance threshold. Stopping training.')
-                    logfile.close()
                     break
 
             idx = index_array[index * batch_size: min((index+1) * batch_size, x.shape[0])]
             loss = self.model.train_on_batch(x=x[idx], y=p[idx])
             index = index + 1 if (index + 1) * batch_size <= x.shape[0] else 0
 
-            # save better model, not all of them
-            if ite % save_interval == 0:
-                print('saving model to:', save_dir + '/DEC_model_' + str(ite) + '.h5')
-                self.model.save_weights(save_dir + '/DEC_model_' + str(ite) + '.h5')
-
-            ite += 1
-
         # save the trained model
-        logfile.close()
         print('saving model to:', save_dir + '/DEC_model_final.h5')
         self.model.save_weights(save_dir + '/DEC_model_final.h5')
 

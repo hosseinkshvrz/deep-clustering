@@ -2,6 +2,7 @@ import os
 from os.path import join
 import numpy as np
 from bert_serving.client import BertClient
+from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 
 path = os.path.dirname(os.path.abspath(__file__))
@@ -11,6 +12,8 @@ class Dataset:
     def __init__(self, mode):
         self.data = []
         self.label = []
+        self.data_valid = []
+        self.label_valid = []
         self.data_test = []
         self.label_test = []
         self.mode = mode
@@ -29,17 +32,29 @@ class IMDB(Dataset):
             for line in target_file:
                 self.label.append(int(line.strip()))
 
-        if self.mode == 'supervised':
-            self.data = self.data[:25000]
-            self.label = self.label[:25000]
+        data_unsupervised = self.data[25000:]
+        label_unsupervised = self.label[25000:]
+        # it also does the shuffling
+        self.data, self.data_valid, self.label, self.label_valid = train_test_split(self.data[:25000],
+                                                                                    self.label[:25000],
+                                                                                    test_size=0.2,
+                                                                                    random_state=1)
+
+        if self.mode == 'semi-supervised':
+            self.data = self.data + data_unsupervised
+            self.label = self.label + label_unsupervised
 
         x = self.bc.encode(self.data)
         y = np.asarray(self.label)
+        x_valid = self.bc.encode(self.data_valid)
+        y_valid = np.asarray(self.label_valid)
         print('IMDB data shape ', x.shape)
+        print('IMDB validation data shape ', x_valid.shape)
         print("IMDB number of clusters: ", np.unique(y).size)
         # original data in IMDB dataset is in order
+        # no need to shuffle the validation data since it is shuffled in the val selection phase
         x, y = shuffle(x, y)
-        return x, y
+        return x, y, x_valid, y_valid
 
     def get_test_data(self):
         with open(join(path, 'data/aclImdb/test/data.txt')) as data_file:
@@ -73,13 +88,19 @@ class SST(Dataset):
         if self.mode == 'semi-supervised':
             raise ValueError('SST does not have untagged data.')
 
+        self.data, self.data_valid, self.label, self.label_valid = train_test_split(self.data,
+                                                                                    self.label,
+                                                                                    test_size=0.2,
+                                                                                    random_state=1)
+
         x = self.bc.encode(self.data)
         y = np.asarray(self.label)
+        x_valid = self.bc.encode(self.data_valid)
+        y_valid = np.asarray(self.label_valid)
         print('SST data shape ', x.shape)
+        print('SST validation data shape ', x_valid.shape)
         print("SST number of clusters: ", np.unique(y).size)
-        # original data in IMDB dataset is in order
-        x, y = shuffle(x, y)
-        return x, y
+        return x, y, x_valid, y_valid
 
     def get_test_data(self):
         with open(join(path, 'data/sst/test/data.txt')) as data_file:
@@ -93,6 +114,4 @@ class SST(Dataset):
         y = np.asarray(self.label_test)
         print('SST test data shape ', x.shape)
         print("SST number of clusters: ", np.unique(y).size)
-        # original data in IMDB dataset is in order
-        x, y = shuffle(x, y)
         return x, y
