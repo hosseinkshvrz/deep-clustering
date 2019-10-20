@@ -84,7 +84,7 @@ class DSC(object):
         self.alpha = alpha
         cls = AutoEncoder(self.doc_dims, self.latent_dims, init=init)
         dataset_func = getattr(cls, ae_type)
-        self.auto_encoder, self.encoder = dataset_func
+        self.auto_encoder, self.encoder = dataset_func()
         clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(self.encoder.output)
         self.model = Model(inputs=self.encoder.input, outputs=clustering_layer)
 
