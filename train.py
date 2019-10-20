@@ -18,7 +18,7 @@ if __name__ == "__main__":
     # setting the hyper parameters
 
     parser = argparse.ArgumentParser(description='train', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--dataset', default='imdb', choices=['imdb', 'sst', 'amazon'])
+    parser.add_argument('--dataset', default='IMDB', choices=['IMDB', 'SST'])
     parser.add_argument('--batch_size', default=256, type=int)
     parser.add_argument('--max_iter', default=2e4, type=int)
     parser.add_argument('--pretrain_epochs', default=10, type=int)

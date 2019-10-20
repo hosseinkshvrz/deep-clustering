@@ -3,6 +3,7 @@
 from time import time
 import numpy as np
 import keras.backend as K
+from keras.callbacks import ModelCheckpoint
 from keras.engine.topology import Layer, InputSpec
 from keras.models import Model
 from keras import callbacks
@@ -87,6 +88,66 @@ class DSC(object):
         clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(self.encoder.output)
         self.model = Model(inputs=self.encoder.input, outputs=clustering_layer)
 
+    def maybe_new_fit(self, x, y=None, x_valid=None, y_valid=None, max_iter=2e4, batch_size=256, tol=1e-3,
+                      update_interval=140, save_dir='results/'):
+        print('Update interval', update_interval)
+        get_acc_interval = int(x.shape[0] / batch_size) * 5  # 5 epochs
+        print('Get accuracy interval', get_acc_interval)
+
+        # Step 1: initialize cluster centers using k-means
+        print('Initializing cluster centers with k-means.')
+        kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
+        y_pred = kmeans.fit_predict(self.encoder.predict(x))
+        y_pred_last = np.copy(y_pred)
+        self.model.get_layer(name='clustering').set_weights([kmeans.cluster_centers_])
+
+        cb = list()
+
+        class UpdateParams(callbacks.Callback):
+            def __init__(self, x, y, x_valid, y_valid, n_clusters):
+                self.x = x
+                self.y = y
+                self.x_valid = x_valid
+                self.y_valid = y_valid
+                self.n_clusters = n_clusters
+                super(UpdateParams, self).__init__()
+
+            @staticmethod
+            def target_distribution(q, y_true, w):
+                weight = q ** 2 / q.sum(0)
+                for index in range(len(weight)):
+                    if y_true[index] == 1:
+                        weight[index] = w[0]
+                    elif y_true[index] == 0:
+                        weight[index] = 1 - w[0]
+                weight = (weight.T / weight.sum(1)).T
+                return weight
+
+            def on_epoch_end(self, epoch, logs=None):
+                if epoch % update_interval != 0:
+                    return
+                q = self.model.predict(self.x, verbose=0)
+                q_valid = self.model.predict(self.x_valid, verbose=0)
+                # evaluate the clustering performance
+                y_pred = q.argmax(1)
+                y_pred_valid = q_valid.argmax(1)
+                _, w = inspect_clusters(y, y_pred, self.n_clusters)
+                self.acc, _ = inspect_clusters(y_valid, y_pred_valid, self.n_clusters)
+                print('Iter {}, Acc: {} '.format(epoch, self.acc))
+                self.p = self.target_distribution(q, y, w)
+
+        update_params = UpdateParams(x, y, x_valid, y_valid, self.n_clusters)
+        cb.append(update_params)
+
+        checkpoint = ModelCheckpoint(save_dir + 'model.h5',
+                                     monitor=update_params.acc,
+                                     verbose=1,
+                                     save_best_only=True,
+                                     save_weights_only=True,
+                                     mode='max')
+        cb.append(checkpoint)
+        self.model.fit(x=x, y=update_params.p, batch_size=batch_size, epochs=max_iter, callbacks=cb)
+
     def pretrain(self, x, y=None, x_valid=None, y_valid=None, optimizer='adam', epochs=200,
                  batch_size=256, save_dir='results/'):
         print('Pre-training ...')
@@ -131,7 +192,7 @@ class DSC(object):
             if y_true[index] == 1:
                 weight[index] = w[0]
             elif y_true[index] == 0:
-                weight[index] = 1-w[0]
+                weight[index] = 1 - w[0]
         weight = (weight.T / weight.sum(1)).T
         return weight
 
@@ -184,7 +245,7 @@ class DSC(object):
                     print('Reached tolerance threshold. Stopping training.')
                     break
 
-            idx = index_array[index * batch_size: min((index+1) * batch_size, x.shape[0])]
+            idx = index_array[index * batch_size: min((index + 1) * batch_size, x.shape[0])]
             loss = self.model.train_on_batch(x=x[idx], y=p[idx])
             index = index + 1 if (index + 1) * batch_size <= x.shape[0] else 0
 
@@ -192,3 +253,17 @@ class DSC(object):
         print('saving model to:', save_dir + '/DEC_model_final.h5')
         self.model.save_weights(save_dir + '/DEC_model_final.h5')
 
+# checkpoint = ModelCheckpoint(filepath,
+#                              monitor='val_acc',
+#                              verbose=1,
+#                              save_best_only=False,
+#                              save_weights_only=True,
+#                              mode='auto')
+#
+# model.fit([data1, data2],
+#           scores,
+#           # validation_split=0.1,
+#           validation_data=([valid1, valid2], valid_scores),
+#           epochs=20,
+#           batch_size=1000,
+#           callbacks=[checkpoint])
