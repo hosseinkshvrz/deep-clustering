@@ -3,7 +3,7 @@
 from time import time
 import numpy as np
 import keras.backend as K
-from keras.callbacks import ModelCheckpoint
+from keras.callbacks import Callback
 from keras.engine.topology import Layer, InputSpec
 from keras.models import Model
 from keras import callbacks
@@ -88,7 +88,7 @@ class DSC(object):
         clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(self.encoder.output)
         self.model = Model(inputs=self.encoder.input, outputs=clustering_layer)
 
-    def maybe_new_fit(self, x, y=None, x_valid=None, y_valid=None, max_iter=2e4, batch_size=256, tol=1e-3,
+    def maybe_new_fit(self, x, y=None, x_valid=None, y_valid=None, max_iter=2e4, batch_size=256,
                       update_interval=140, save_dir='results/'):
         print('Update interval', update_interval)
         get_acc_interval = int(x.shape[0] / batch_size) * 5  # 5 epochs
@@ -98,18 +98,16 @@ class DSC(object):
         print('Initializing cluster centers with k-means.')
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
         y_pred = kmeans.fit_predict(self.encoder.predict(x))
-        y_pred_last = np.copy(y_pred)
         self.model.get_layer(name='clustering').set_weights([kmeans.cluster_centers_])
 
-        cb = list()
-
-        class UpdateParams(callbacks.Callback):
+        class UpdateParams(Callback):
             def __init__(self, x, y, x_valid, y_valid, n_clusters):
                 self.x = x
                 self.y = y
                 self.x_valid = x_valid
                 self.y_valid = y_valid
                 self.n_clusters = n_clusters
+                self.filepath = save_dir + 'model.h5'
                 super(UpdateParams, self).__init__()
 
             @staticmethod
@@ -126,26 +124,29 @@ class DSC(object):
             def on_epoch_end(self, epoch, logs=None):
                 if epoch % update_interval != 0:
                     return
+                # A callback has access to its associated model through the class property self.model
                 q = self.model.predict(self.x, verbose=0)
                 q_valid = self.model.predict(self.x_valid, verbose=0)
                 # evaluate the clustering performance
                 y_pred = q.argmax(1)
                 y_pred_valid = q_valid.argmax(1)
                 _, w = inspect_clusters(y, y_pred, self.n_clusters)
-                self.acc, _ = inspect_clusters(y_valid, y_pred_valid, self.n_clusters)
-                print('Iter {}, Acc: {} '.format(epoch, self.acc))
+                acc, _ = inspect_clusters(y_valid, y_pred_valid, self.n_clusters)
+                print('Iter {}, Acc: {} '.format(epoch, acc))
                 self.p = self.target_distribution(q, y, w)
+                monitor_op = np.greater
+                best = -np.Inf
+                if monitor_op(acc, best):
+                    print('\nEpoch %05d: %s improved from %0.5f to %0.5f, saving model to %s'
+                          % (epoch + 1, 'acc', best, acc, self.filepath))
+                    best = acc
+                    self.model.save(self.filepath, overwrite=True)
+                else:
+                    print('\nEpoch %05d: %s did not improve from %0.5f'
+                          % (epoch + 1, 'acc', best))
 
         update_params = UpdateParams(x, y, x_valid, y_valid, self.n_clusters)
-        cb.append(update_params)
-
-        checkpoint = ModelCheckpoint(save_dir + 'model.h5',
-                                     monitor=update_params.acc,
-                                     verbose=1,
-                                     save_best_only=True,
-                                     save_weights_only=True,
-                                     mode='max')
-        cb.append(checkpoint)
+        cb = [update_params]
         self.model.fit(x=x, y=update_params.p, batch_size=batch_size, epochs=max_iter, callbacks=cb)
 
     def pretrain(self, x, y=None, x_valid=None, y_valid=None, optimizer='adam', epochs=200,
@@ -157,7 +158,7 @@ class DSC(object):
         csv_logger = callbacks.CSVLogger(save_dir + '/pretrain_log.csv')
         cb = [csv_logger]
         if y is not None:
-            class PrintACC(callbacks.Callback):
+            class PrintACC(Callback):
                 def __init__(self, x, y, n_clusters):
                     self.x = x
                     self.y = y
@@ -182,7 +183,7 @@ class DSC(object):
         t0 = time()
         self.auto_encoder.fit(x, x, batch_size=batch_size, epochs=epochs, callbacks=cb)
         print('Pre-training time: %ds' % round(time() - t0))
-        self.auto_encoder.save_weights(save_dir + '/ae_weights.h5')
+        self.auto_encoder.save(save_dir + '/ae_weights.h5')
         print('Pre-trained weights are saved to %s/ae_weights.h5' % save_dir)
 
     @staticmethod
@@ -233,7 +234,7 @@ class DSC(object):
                     if acc > best_acc:
                         best_acc = acc
                         print('saving model to:', save_dir + '/DEC_model_' + str(ite) + '.h5')
-                        self.model.save_weights(save_dir + '/DEC_model_' + str(ite) + '.h5')
+                        self.model.save(save_dir + '/DEC_model_' + str(ite) + '.h5')
 
                 p = self.target_distribution(q, y, w)
 
@@ -251,19 +252,4 @@ class DSC(object):
 
         # save the trained model
         print('saving model to:', save_dir + '/DEC_model_final.h5')
-        self.model.save_weights(save_dir + '/DEC_model_final.h5')
-
-# checkpoint = ModelCheckpoint(filepath,
-#                              monitor='val_acc',
-#                              verbose=1,
-#                              save_best_only=False,
-#                              save_weights_only=True,
-#                              mode='auto')
-#
-# model.fit([data1, data2],
-#           scores,
-#           # validation_split=0.1,
-#           validation_data=([valid1, valid2], valid_scores),
-#           epochs=20,
-#           batch_size=1000,
-#           callbacks=[checkpoint])
+        self.model.save(save_dir + '/DEC_model_final.h5')
