@@ -44,10 +44,26 @@ class IMDB(Dataset):
             self.data = self.data + data_unsupervised
             self.label = self.label + label_unsupervised
 
-        x = self.bc.encode(self.data)
+        filepath = path + 'data/IMDB_train_' + self.mode + '.npy'
+        exists = os.path.isfile(filepath)
+        if not exists:
+            x = self.bc.encode(self.data)
+            np.save(filepath, x)
+        else:
+            x = np.load(filepath)
+
         y = np.asarray(self.label)
-        x_valid = self.bc.encode(self.data_valid)
+
+        filepath = path + 'data/IMDB_valid_' + self.mode + '.npy'
+        exists = os.path.isfile(filepath)
+        if not exists:
+            x_valid = self.bc.encode(self.data_valid)
+            np.save(filepath, x_valid)
+        else:
+            x_valid = np.load(filepath)
+
         y_valid = np.asarray(self.label_valid)
+
         print('IMDB data shape ', x.shape)
         print('IMDB validation data shape ', x_valid.shape)
         print("IMDB number of clusters: ", np.unique(y).size)
@@ -64,8 +80,16 @@ class IMDB(Dataset):
             for line in target_file:
                 self.label_test.append(int(line.strip()))
 
-        x = self.bc.encode(self.data_test)
+        filepath = path + 'data/IMDB_test.npy'
+        exists = os.path.isfile(filepath)
+        if not exists:
+            x = self.bc.encode(self.data_test)
+            np.save(filepath, x)
+        else:
+            x = np.load(filepath)
+
         y = np.asarray(self.label_test)
+
         print('IMDB test data shape ', x.shape)
         print("IMDB number of clusters: ", np.unique(y).size)
         # original data in IMDB dataset is in order
@@ -92,14 +116,30 @@ class SST(Dataset):
                                                                                     self.label,
                                                                                     test_size=0.2,
                                                                                     random_state=1)
+        filepath = path + 'data/SST_train.npy'
+        exists = os.path.isfile(filepath)
+        if not exists:
+            x = self.bc.encode(self.data)
+            np.save(filepath, x)
+        else:
+            x = np.load(filepath)
 
-        x = self.bc.encode(self.data)
         y = np.asarray(self.label)
-        x_valid = self.bc.encode(self.data_valid)
+
+        filepath = path + 'data/SST_valid.npy'
+        exists = os.path.isfile(filepath)
+        if not exists:
+            x_valid = self.bc.encode(self.data_valid)
+            np.save(filepath, x_valid)
+        else:
+            x_valid = np.load(filepath)
+
         y_valid = np.asarray(self.label_valid)
+
         print('SST data shape ', x.shape)
         print('SST validation data shape ', x_valid.shape)
         print("SST number of clusters: ", np.unique(y).size)
+        # SST does not need shuffling
         return x, y, x_valid, y_valid
 
     def get_test_data(self):
@@ -110,8 +150,16 @@ class SST(Dataset):
             for line in target_file:
                 self.label_test.append(int(line.strip()))
 
-        x = self.bc.encode(self.data_test)
+        filepath = path + 'data/SST_test.npy'
+        exists = os.path.isfile(filepath)
+        if not exists:
+            x = self.bc.encode(self.data_test)
+            np.save(filepath, x)
+        else:
+            x = np.load(filepath)
+
         y = np.asarray(self.label_test)
+
         print('SST test data shape ', x.shape)
         print("SST number of clusters: ", np.unique(y).size)
         return x, y
