@@ -217,6 +217,8 @@ class DSC(object):
         # Step 2: deep clustering
         best_acc = 0
         loss = 0
+        interval_loss = 0
+        least_loss = np.inf
         index = 0
         index_array = np.arange(x.shape[0])
         for ite in range(int(max_iter)):
@@ -227,14 +229,21 @@ class DSC(object):
                 # evaluate the clustering performance
                 y_pred = q.argmax(1)
                 y_pred_valid = q_valid.argmax(1)
-                if y is not None:
-                    _, w = inspect_clusters(y, y_pred, self.n_clusters)
-                    acc, _ = inspect_clusters(y_valid, y_pred_valid, self.n_clusters)
-                    print('Iter {}, Acc: {} '.format(ite, acc), '; loss=', loss)
-                    if acc > best_acc:
-                        best_acc = acc
-                        print('saving model to:', save_dir + '/DEC_model_' + str(ite) + '.h5')
-                        self.model.save(save_dir + '/DEC_model_' + str(ite) + '.h5')
+                _, w = inspect_clusters(y, y_pred, self.n_clusters)
+                acc, _ = inspect_clusters(y_valid, y_pred_valid, self.n_clusters)
+                print('Iter {}, Acc: {} '.format(ite, acc),
+                      '; interval loss=', interval_loss,
+                      '; last epoch loss=', loss)
+                if acc > best_acc:
+                    best_acc = acc
+                    print('saving model to:', save_dir + '/DEC_model_acc_' + str(ite) + '.h5')
+                    self.model.save(save_dir + '/DEC_model_acc_' + str(ite) + '.h5')
+                if interval_loss < least_loss:
+                    least_loss = interval_loss
+                    print('saving model to:', save_dir + '/DEC_model_loss_' + str(ite) + '.h5')
+                    self.model.save(save_dir + '/DEC_model_loss_' + str(ite) + '.h5')
+
+                interval_loss = 0
 
                 p = self.target_distribution(q, y, w)
 
@@ -248,6 +257,7 @@ class DSC(object):
 
             idx = index_array[index * batch_size: min((index + 1) * batch_size, x.shape[0])]
             loss = self.model.train_on_batch(x=x[idx], y=p[idx])
+            interval_loss += loss
             index = index + 1 if (index + 1) * batch_size <= x.shape[0] else 0
 
         # save the trained model
