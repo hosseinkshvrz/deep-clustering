@@ -44,7 +44,7 @@ class IMDB(Dataset):
             self.data = self.data + data_unsupervised
             self.label = self.label + label_unsupervised
 
-        filepath = path + 'data/IMDB_train_' + self.mode + '.npy'
+        filepath = path + '/data/IMDB_train_' + self.mode + '.npy'
         exists = os.path.isfile(filepath)
         if not exists:
             x = self.bc.encode(self.data)
@@ -54,7 +54,7 @@ class IMDB(Dataset):
 
         y = np.asarray(self.label)
 
-        filepath = path + 'data/IMDB_valid_' + self.mode + '.npy'
+        filepath = path + '/data/IMDB_valid_' + self.mode + '.npy'
         exists = os.path.isfile(filepath)
         if not exists:
             x_valid = self.bc.encode(self.data_valid)
@@ -80,7 +80,7 @@ class IMDB(Dataset):
             for line in target_file:
                 self.label_test.append(int(line.strip()))
 
-        filepath = path + 'data/IMDB_test.npy'
+        filepath = path + '/data/IMDB_test.npy'
         exists = os.path.isfile(filepath)
         if not exists:
             x = self.bc.encode(self.data_test)
@@ -116,7 +116,7 @@ class SST(Dataset):
                                                                                     self.label,
                                                                                     test_size=0.2,
                                                                                     random_state=1)
-        filepath = path + 'data/SST_train.npy'
+        filepath = path + '/data/SST_train.npy'
         exists = os.path.isfile(filepath)
         if not exists:
             x = self.bc.encode(self.data)
@@ -126,7 +126,7 @@ class SST(Dataset):
 
         y = np.asarray(self.label)
 
-        filepath = path + 'data/SST_valid.npy'
+        filepath = path + '/data/SST_valid.npy'
         exists = os.path.isfile(filepath)
         if not exists:
             x_valid = self.bc.encode(self.data_valid)
@@ -150,7 +150,7 @@ class SST(Dataset):
             for line in target_file:
                 self.label_test.append(int(line.strip()))
 
-        filepath = path + 'data/SST_test.npy'
+        filepath = path + '/data/SST_test.npy'
         exists = os.path.isfile(filepath)
         if not exists:
             x = self.bc.encode(self.data_test)
