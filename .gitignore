@@ -199,3 +199,5 @@ dmypy.json
 
 data/
 .idea/
+
+exp_*.out
