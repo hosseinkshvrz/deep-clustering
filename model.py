@@ -217,7 +217,7 @@ class DSC(object):
         # Step 2: deep clustering
         best_acc = 0
         loss = 0
-        interval_loss = 0
+        interval_loss = np.inf
         least_loss = np.inf
         index = 0
         index_array = np.arange(x.shape[0])
@@ -236,12 +236,12 @@ class DSC(object):
                       '; last epoch loss=', loss)
                 if acc > best_acc:
                     best_acc = acc
-                    print('saving model to:', save_dir + '/DEC_model_acc_' + str(ite) + '.h5')
-                    self.model.save(save_dir + '/DEC_model_acc_' + str(ite) + '.h5')
+                    print('saving model to:', save_dir + 'DEC_model_acc_' + str(ite) + '.h5')
+                    self.model.save(save_dir + 'DEC_model_acc_' + str(ite) + '.h5')
                 if interval_loss < least_loss:
                     least_loss = interval_loss
-                    print('saving model to:', save_dir + '/DEC_model_loss_' + str(ite) + '.h5')
-                    self.model.save(save_dir + '/DEC_model_loss_' + str(ite) + '.h5')
+                    print('saving model to:', save_dir + 'DEC_model_loss_' + str(ite) + '.h5')
+                    self.model.save(save_dir + 'DEC_model_loss_' + str(ite) + '.h5')
 
                 interval_loss = 0
 
