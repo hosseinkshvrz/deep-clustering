@@ -1,5 +1,5 @@
 # Deep Sentiment Clustering
-
+import os
 from time import time
 import numpy as np
 import keras.backend as K
@@ -8,9 +8,10 @@ from keras.engine.topology import Layer, InputSpec
 from keras.models import Model
 from keras import callbacks
 from sklearn.cluster import KMeans
-
 from auto_encoders import AutoEncoder
 from metrics import inspect_clusters
+
+path = os.path.dirname(os.path.abspath(__file__))
 
 
 class ClusteringLayer(Layer):
@@ -91,8 +92,6 @@ class DSC(object):
     def maybe_new_fit(self, x, y=None, x_valid=None, y_valid=None, max_iter=2e4, batch_size=256,
                       update_interval=140, save_dir='results/'):
         print('Update interval', update_interval)
-        get_acc_interval = int(x.shape[0] / batch_size) * 5  # 5 epochs
-        print('Get accuracy interval', get_acc_interval)
 
         # Step 1: initialize cluster centers using k-means
         print('Initializing cluster centers with k-means.')
@@ -155,7 +154,7 @@ class DSC(object):
         self.auto_encoder.summary()
         self.auto_encoder.compile(optimizer=optimizer, loss='mse')
 
-        csv_logger = callbacks.CSVLogger(save_dir + '/pretrain_log.csv')
+        csv_logger = callbacks.CSVLogger(save_dir + 'pretrain_log.csv')
         cb = [csv_logger]
         if y is not None:
             class PrintACC(Callback):
@@ -169,8 +168,7 @@ class DSC(object):
                     if epoch % 10 != 0:
                         return
                     feature_model = Model(self.model.input,
-                                          self.model.get_layer(
-                                              'encoder_%d' % (int((len(self.model.layers) - 1) / 2) - 1)).output)
+                                          self.model.get_layer('encoder_%d' % (int((len(self.model.layers) - 1) / 2) - 1)).output)
                     features = feature_model.predict(self.x)
                     km = KMeans(n_clusters=self.n_clusters, n_init=20, n_jobs=4)
                     y_pred = km.fit_predict(features)
@@ -183,8 +181,8 @@ class DSC(object):
         t0 = time()
         self.auto_encoder.fit(x, x, batch_size=batch_size, epochs=epochs, callbacks=cb)
         print('Pre-training time: %ds' % round(time() - t0))
-        self.auto_encoder.save(save_dir + '/ae_weights.h5')
-        print('Pre-trained weights are saved to %s/ae_weights.h5' % save_dir)
+        self.auto_encoder.save(save_dir + 'ae_weights.h5')
+        print('Pre-trained weights are saved to %sae_weights.h5' % save_dir)
 
     @staticmethod
     def target_distribution(q, y_true, w):
@@ -202,10 +200,9 @@ class DSC(object):
 
     def fit(self, x, y=None, x_valid=None, y_valid=None, max_iter=2e4, batch_size=256, tol=1e-3,
             update_interval=140, save_dir='results/'):
-
         print('Update interval', update_interval)
-        get_acc_interval = int(x.shape[0] / batch_size) * 5  # 5 epochs
-        print('Get accuracy interval', get_acc_interval)
+        save_embedding_interval = max_iter // 10
+        print('Save embedding interval', save_embedding_interval)
 
         # Step 1: initialize cluster centers using k-means
         print('Initializing cluster centers with k-means.')
@@ -222,6 +219,11 @@ class DSC(object):
         index = 0
         index_array = np.arange(x.shape[0])
         for ite in range(int(max_iter)):
+            if ite % save_embedding_interval == 0:
+                feature_model = Model(self.model.input,
+                                      self.model.get_layer('encoder_%d' % (len(self.latent_dims) - 1)).output)
+                features = feature_model.predict(x)
+                np.save(path + '/data/embedding_' + str(ite) + '.npy', features)
             if ite % update_interval == 0:
                 q = self.model.predict(x, verbose=0)
                 q_valid = self.model.predict(x_valid, verbose=0)
@@ -261,5 +263,5 @@ class DSC(object):
             index = index + 1 if (index + 1) * batch_size <= x.shape[0] else 0
 
         # save the trained model
-        print('saving model to:', save_dir + '/DEC_model_final.h5')
-        self.model.save(save_dir + '/DEC_model_final.h5')
+        print('saving model to:', save_dir + 'DEC_model_final.h5')
+        self.model.save(save_dir + 'DEC_model_final.h5')
