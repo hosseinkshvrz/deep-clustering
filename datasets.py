@@ -44,25 +44,23 @@ class IMDB(Dataset):
             self.data = self.data + data_unsupervised
             self.label = self.label + label_unsupervised
 
-        filepath = path + '/data/IMDB_train_' + self.mode + '.npy'
+        filepath = path + '/data/IMDB_valabel_' + self.mode + '.npy'
         exists = os.path.isfile(filepath)
+        # the following procedure is due to the randomness of the split function
         if not exists:
             x = self.bc.encode(self.data)
-            np.save(filepath, x)
-        else:
-            x = np.load(filepath)
-
-        y = np.asarray(self.label)
-
-        filepath = path + '/data/IMDB_valid_' + self.mode + '.npy'
-        exists = os.path.isfile(filepath)
-        if not exists:
+            np.save(path + '/data/IMDB_train_' + self.mode + '.npy', x)
+            y = np.asarray(self.label)
+            np.save(path + '/data/IMDB_trlabel_' + self.mode + '.npy', y)
             x_valid = self.bc.encode(self.data_valid)
-            np.save(filepath, x_valid)
+            np.save(path + '/data/IMDB_valid_' + self.mode + '.npy', x_valid)
+            y_valid = np.asarray(self.label_valid)
+            np.save(path + '/data/IMDB_valabel_' + self.mode + '.npy', y_valid)
         else:
-            x_valid = np.load(filepath)
-
-        y_valid = np.asarray(self.label_valid)
+            x = np.load(path + '/data/IMDB_train_' + self.mode + '.npy')
+            y = np.load(path + '/data/IMDB_trlabel_' + self.mode + '.npy')
+            x_valid = np.load(path + '/data/IMDB_valid_' + self.mode + '.npy')
+            y_valid = np.load(path + '/data/IMDB_valabel_' + self.mode + '.npy')
 
         print('IMDB data shape ', x.shape)
         print('IMDB validation data shape ', x_valid.shape)
@@ -116,25 +114,23 @@ class SST(Dataset):
                                                                                     self.label,
                                                                                     test_size=0.2,
                                                                                     random_state=1)
-        filepath = path + '/data/SST_train.npy'
+        filepath = path + '/data/SST_valabel_' + self.mode + '.npy'
         exists = os.path.isfile(filepath)
+        # the following procedure is due to the randomness of the split function
         if not exists:
             x = self.bc.encode(self.data)
-            np.save(filepath, x)
-        else:
-            x = np.load(filepath)
-
-        y = np.asarray(self.label)
-
-        filepath = path + '/data/SST_valid.npy'
-        exists = os.path.isfile(filepath)
-        if not exists:
+            np.save(path + '/data/SST_train_' + self.mode + '.npy', x)
+            y = np.asarray(self.label)
+            np.save(path + '/data/SST_trlabel_' + self.mode + '.npy', y)
             x_valid = self.bc.encode(self.data_valid)
-            np.save(filepath, x_valid)
+            np.save(path + '/data/SST_valid_' + self.mode + '.npy', x_valid)
+            y_valid = np.asarray(self.label_valid)
+            np.save(path + '/data/SST_valabel_' + self.mode + '.npy', y_valid)
         else:
-            x_valid = np.load(filepath)
-
-        y_valid = np.asarray(self.label_valid)
+            x = np.load(path + '/data/SST_train_' + self.mode + '.npy')
+            y = np.load(path + '/data/SST_trlabel_' + self.mode + '.npy')
+            x_valid = np.load(path + '/data/SST_valid_' + self.mode + '.npy')
+            y_valid = np.load(path + '/data/SST_valabel_' + self.mode + '.npy')
 
         print('SST data shape ', x.shape)
         print('SST validation data shape ', x_valid.shape)
