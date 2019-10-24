@@ -39,3 +39,5 @@ if __name__ == "__main__":
     q_test = model.predict(x_test)
     y_pred = q_test.argmax(1)
     acc, _ = inspect_clusters(y_test, y_pred, n_clusters)
+    print('the accuracy of the trained model on the test data is:')
+    print('======> ', acc, '<======')
