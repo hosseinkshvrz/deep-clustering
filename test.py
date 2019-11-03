@@ -2,9 +2,10 @@ import os
 import argparse
 from time import time
 import datasets
+import numpy as np
 from keras.models import load_model
-
 from metrics import inspect_clusters
+from model import ClusteringLayer
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -27,17 +28,19 @@ if __name__ == "__main__":
     train_mode = args.train_mode
     n_clusters = args.n_clusters
 
+    model = load_model(filepath, custom_objects={'ClusteringLayer': ClusteringLayer})
+    model.summary()
+
     # strangely doesn't work in my local system, but works on GPU server
     module = datasets
     dataset_class = getattr(module, dataset)
     dataset_obj = dataset_class(train_mode)
     x_test, y_test = dataset_obj.get_test_data()
 
-    model = load_model(filepath)
-    model.summary()
+    x_test = x_test.astype(np.float16)
+    y_test = y_test.astype(np.float16)
 
     q_test = model.predict(x_test)
     y_pred = q_test.argmax(1)
     acc, _ = inspect_clusters(y_test, y_pred, n_clusters)
-    print('the accuracy of the trained model on the test data is:')
-    print('======> ', acc, '<======')
+    print(acc)

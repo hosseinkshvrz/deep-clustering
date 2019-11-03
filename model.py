@@ -223,7 +223,7 @@ class DSC(object):
                 feature_model = Model(self.model.input,
                                       self.model.get_layer('encoder_%d' % (len(self.latent_dims) - 1)).output)
                 features = feature_model.predict(x)
-                np.save(path + '/data/embedding_' + str(ite) + '.npy', features)
+                np.save(save_dir + 'embedding_' + str(ite) + '.npy', features)
             if ite % update_interval == 0:
                 q = self.model.predict(x, verbose=0)
                 q_valid = self.model.predict(x_valid, verbose=0)
