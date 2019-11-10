@@ -17,7 +17,7 @@ class Dataset:
         self.data_test = []
         self.label_test = []
         self.mode = mode
-        self.bc = BertClient()
+#        self.bc = BertClient()
 
 
 class IMDB(Dataset):
@@ -46,14 +46,15 @@ class IMDB(Dataset):
         exists = os.path.isfile(filepath)
         # the following procedure is due to the randomness of the split function
         if not exists:
-            x = self.bc.encode(self.data)
-            np.save(path + '/data/IMDB_train.npy', x)
-            y = np.asarray(self.label)
-            np.save(path + '/data/IMDB_trlabel.npy', y)
-            x_valid = self.bc.encode(self.data_valid)
-            np.save(path + '/data/IMDB_valid.npy', x_valid)
-            y_valid = np.asarray(self.label_valid)
-            np.save(path + '/data/IMDB_valabel.npy', y_valid)
+            return None
+        #             x = self.bc.encode(self.data)
+        #             np.save(path + '/data/IMDB_train.npy', x)
+        #             y = np.asarray(self.label)
+        #             np.save(path + '/data/IMDB_trlabel.npy', y)
+        #             x_valid = self.bc.encode(self.data_valid)
+        #             np.save(path + '/data/IMDB_valid.npy', x_valid)
+        #             y_valid = np.asarray(self.label_valid)
+        #             np.save(path + '/data/IMDB_valabel.npy', y_valid)
         else:
             x = np.load(path + '/data/IMDB_train.npy')
             x = x.astype('float16')
@@ -61,6 +62,11 @@ class IMDB(Dataset):
             x_valid = np.load(path + '/data/IMDB_valid.npy')
             x_valid = x_valid.astype('float16')
             y_valid = np.load(path + '/data/IMDB_valabel.npy')
+
+        #        x = np.load(path + '/data/fasttext/IMDB_train.npy')
+        #        y = np.load(path + '/data/fasttext/IMDB_trlabel.npy')
+        #        x_valid = np.load(path + '/data/fasttext/IMDB_valid.npy')
+        #        y_valid = np.load(path + '/data/fasttext/IMDB_valabel.npy')
 
         print('tagged loaded')
 
@@ -79,50 +85,50 @@ class IMDB(Dataset):
             data_unsupervised = data_unsupervised.astype('float16')
             x = np.append(x, data_unsupervised, axis=0)
             print('chunk loaded')
-            temp = np.load(path + '/data/IMDB_dauntagged_10000.npy')
-            temp = temp.astype('float16')
+            data_unsupervised = np.load(path + '/data/IMDB_dauntagged_10000.npy')
+            data_unsupervised = data_unsupervised.astype('float16')
             # data_unsupervised = np.append(data_unsupervised, temp, axis=0)
-            x = np.append(x, temp, axis=0)
+            x = np.append(x, data_unsupervised, axis=0)
             print('chunk loaded')
-            temp = np.load(path + '/data/IMDB_dauntagged_15000.npy')
-            temp = temp.astype('float16')
+            data_unsupervised = np.load(path + '/data/IMDB_dauntagged_15000.npy')
+            data_unsupervised = data_unsupervised.astype('float16')
             # data_unsupervised = np.append(data_unsupervised, temp, axis=0)
-            x = np.append(x, temp, axis=0)
+            x = np.append(x, data_unsupervised, axis=0)
             print('chunk loaded')
-            temp = np.load(path + '/data/IMDB_dauntagged_20000.npy')
-            temp = temp.astype('float16')
+            data_unsupervised = np.load(path + '/data/IMDB_dauntagged_20000.npy')
+            data_unsupervised = data_unsupervised.astype('float16')
             # data_unsupervised = np.append(data_unsupervised, temp, axis=0)
-            x = np.append(x, temp, axis=0)
+            x = np.append(x, data_unsupervised, axis=0)
             print('chunk loaded')
-            temp = np.load(path + '/data/IMDB_dauntagged_25000.npy')
-            temp = temp.astype('float16')
+            data_unsupervised = np.load(path + '/data/IMDB_dauntagged_25000.npy')
+            data_unsupervised = data_unsupervised.astype('float16')
             # data_unsupervised = np.append(data_unsupervised, temp, axis=0)
-            x = np.append(x, temp, axis=0)
+            x = np.append(x, data_unsupervised, axis=0)
             print('chunk loaded')
-            temp = np.load(path + '/data/IMDB_dauntagged_30000.npy')
-            temp = temp.astype('float16')
+            data_unsupervised = np.load(path + '/data/IMDB_dauntagged_30000.npy')
+            data_unsupervised = data_unsupervised.astype('float16')
             # data_unsupervised = np.append(data_unsupervised, temp, axis=0)
-            x = np.append(x, temp, axis=0)
+            x = np.append(x, data_unsupervised, axis=0)
             print('chunk loaded')
-            temp = np.load(path + '/data/IMDB_dauntagged_35000.npy')
-            temp = temp.astype('float16')
+            data_unsupervised = np.load(path + '/data/IMDB_dauntagged_35000.npy')
+            data_unsupervised = data_unsupervised.astype('float16')
             # data_unsupervised = np.append(data_unsupervised, temp, axis=0)
-            x = np.append(x, temp, axis=0)
+            x = np.append(x, data_unsupervised, axis=0)
             print('chunk loaded')
-            temp = np.load(path + '/data/IMDB_dauntagged_40000.npy')
-            temp = temp.astype('float16')
+            data_unsupervised = np.load(path + '/data/IMDB_dauntagged_40000.npy')
+            data_unsupervised = data_unsupervised.astype('float16')
             # data_unsupervised = np.append(data_unsupervised, temp, axis=0)
-            x = np.append(x, temp, axis=0)
+            x = np.append(x, data_unsupervised, axis=0)
             print('chunk loaded')
-            temp = np.load(path + '/data/IMDB_dauntagged_45000.npy')
-            temp = temp.astype('float16')
+            data_unsupervised = np.load(path + '/data/IMDB_dauntagged_45000.npy')
+            data_unsupervised = data_unsupervised.astype('float16')
             # data_unsupervised = np.append(data_unsupervised, temp, axis=0)
-            x = np.append(x, temp, axis=0)
+            x = np.append(x, data_unsupervised, axis=0)
             print('chunk loaded')
-            temp = np.load(path + '/data/IMDB_dauntagged_50000.npy')
-            temp = temp.astype('float16')
+            data_unsupervised = np.load(path + '/data/IMDB_dauntagged_50000.npy')
+            data_unsupervised = data_unsupervised.astype('float16')
             # data_unsupervised = np.append(data_unsupervised, temp, axis=0)
-            x = np.append(x, temp, axis=0)
+            x = np.append(x, data_unsupervised, axis=0)
             print('chunk loaded')
 
             label_unsupervised = np.asarray(label_unsupervised)
@@ -139,6 +145,19 @@ class IMDB(Dataset):
         # no need to shuffle the validation data since it is shuffled in the val selection phase
         x, y = shuffle(x, y)
         print('shuffled')
+        index = 0
+        batch_size = 512
+        index_array = np.arange(len(x))
+        while True:
+            idx = index_array[index * batch_size: min((index + 1) * batch_size, len(x))]
+            np.save(path + '/data/xunsuper_shuffled_' + str(index) + '.npy', x[idx])
+            np.save(path + '/data/yunsuper_shuffled_' + str(index) + '.npy', y[idx])
+            print('saved batch:', index)
+            if (index + 1) * batch_size <= len(x):
+                index = index + 1
+            else:
+                break
+        print('batches saved')
         return x, y, x_valid, y_valid
 
     def get_test_data(self):
@@ -150,7 +169,7 @@ class IMDB(Dataset):
             for line in target_file:
                 self.label_test.append(int(line.strip()))
         print('before loading')
-        filepath = path + '/data/IMDB_test.npy'
+        filepath = path + '/data/fasttext/IMDB_test.npy'
         exists = os.path.isfile(filepath)
         if not exists:
             x = self.bc.encode(self.data_test)
@@ -231,3 +250,4 @@ class SST(Dataset):
         print('SST test data shape ', x.shape)
         print("SST number of clusters: ", np.unique(y).size)
         return x, y
+

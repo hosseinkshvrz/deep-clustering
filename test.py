@@ -8,7 +8,7 @@ from metrics import inspect_clusters
 from model import ClusteringLayer
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 if __name__ == "__main__":
     # setting the hyper parameters
@@ -37,8 +37,8 @@ if __name__ == "__main__":
     dataset_obj = dataset_class(train_mode)
     x_test, y_test = dataset_obj.get_test_data()
 
-    x_test = x_test.astype(np.float16)
-    y_test = y_test.astype(np.float16)
+    # x_test = x_test.astype(np.float16)
+    # y_test = y_test.astype(np.float16)
 
     q_test = model.predict(x_test)
     y_pred = q_test.argmax(1)
