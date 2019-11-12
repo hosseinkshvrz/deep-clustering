@@ -42,7 +42,7 @@ class IMDB(Dataset):
                                                                                     test_size=0.2,
                                                                                     random_state=1)
 
-        filepath = path + '/data/IMDB_valabel.npy'
+        filepath = path + '/data/fasttext/IMDB_valabel.npy'
         exists = os.path.isfile(filepath)
         # the following procedure is due to the randomness of the split function
         if not exists:
@@ -56,17 +56,17 @@ class IMDB(Dataset):
         #             y_valid = np.asarray(self.label_valid)
         #             np.save(path + '/data/IMDB_valabel.npy', y_valid)
         else:
-            x = np.load(path + '/data/IMDB_train.npy')
-            x = x.astype('float16')
-            y = np.load(path + '/data/IMDB_trlabel.npy')
-            x_valid = np.load(path + '/data/IMDB_valid.npy')
-            x_valid = x_valid.astype('float16')
-            y_valid = np.load(path + '/data/IMDB_valabel.npy')
+            # x = np.load(path + '/data/IMDB_train.npy')
+            # x = x.astype('float16')
+            # y = np.load(path + '/data/IMDB_trlabel.npy')
+            # x_valid = np.load(path + '/data/IMDB_valid.npy')
+            # x_valid = x_valid.astype('float16')
+            # y_valid = np.load(path + '/data/IMDB_valabel.npy')
 
-        #        x = np.load(path + '/data/fasttext/IMDB_train.npy')
-        #        y = np.load(path + '/data/fasttext/IMDB_trlabel.npy')
-        #        x_valid = np.load(path + '/data/fasttext/IMDB_valid.npy')
-        #        y_valid = np.load(path + '/data/fasttext/IMDB_valabel.npy')
+               x = np.load(path + '/data/fasttext/IMDB_train.npy')
+               y = np.load(path + '/data/fasttext/IMDB_trlabel.npy')
+               x_valid = np.load(path + '/data/fasttext/IMDB_valid.npy')
+               y_valid = np.load(path + '/data/fasttext/IMDB_valabel.npy')
 
         print('tagged loaded')
 
@@ -145,19 +145,19 @@ class IMDB(Dataset):
         # no need to shuffle the validation data since it is shuffled in the val selection phase
         x, y = shuffle(x, y)
         print('shuffled')
-        index = 0
-        batch_size = 512
-        index_array = np.arange(len(x))
-        while True:
-            idx = index_array[index * batch_size: min((index + 1) * batch_size, len(x))]
-            np.save(path + '/data/xunsuper_shuffled_' + str(index) + '.npy', x[idx])
-            np.save(path + '/data/yunsuper_shuffled_' + str(index) + '.npy', y[idx])
-            print('saved batch:', index)
-            if (index + 1) * batch_size <= len(x):
-                index = index + 1
-            else:
-                break
-        print('batches saved')
+        # index = 0
+        # batch_size = 512
+        # index_array = np.arange(len(x))
+        # while True:
+        #     idx = index_array[index * batch_size: min((index + 1) * batch_size, len(x))]
+        #     np.save(path + '/data/xunsuper_shuffled_' + str(index) + '.npy', x[idx])
+        #     np.save(path + '/data/yunsuper_shuffled_' + str(index) + '.npy', y[idx])
+        #     print('saved batch:', index)
+        #     if (index + 1) * batch_size <= len(x):
+        #         index = index + 1
+        #     else:
+        #         break
+        # print('batches saved')
         return x, y, x_valid, y_valid
 
     def get_test_data(self):

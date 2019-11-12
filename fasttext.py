@@ -2,6 +2,7 @@ import io
 import numpy as np
 from keras_preprocessing.text import text_to_word_sequence
 from sklearn.model_selection import train_test_split
+from gensim.models.wrappers import FastText
 
 
 def load_vectors(fname):
@@ -21,10 +22,11 @@ def get_embedding(data, document):
     for i, tkn in enumerate(tokens):
         if i > 255:
             break
-        vc = data.get(tkn)
-        if vc is not None:
+        try:
+            # vc = data.get(tkn)
+            vc = data[tkn]
             vector[i] = vc
-        else:
+        except KeyError:
             print(tkn)
     return vector
 
@@ -60,11 +62,13 @@ data, data_valid, label, label_valid = train_test_split(data[:25000],
                                                         test_size=0.2,
                                                         random_state=1)
 
-vectors = load_vectors('data/wiki-news-300d-1M.vec')
+# model = load_vectors('data/wiki-news-300d-1M.vec')
+model = FastText.load_fasttext_format('data/wiki.simple.bin')
+
 print('vectors loaded')
 x = np.zeros((len(data), 256, 300), dtype='float16')
 for i, doc in enumerate(data):
-    x[i] = get_embedding(vectors, doc)
+    x[i] = get_embedding(model, doc)
 
 np.save('data/fasttext/IMDB_train.npy', x)
 print('train saved')
@@ -72,7 +76,7 @@ print('train saved')
 
 x_valid = np.zeros((len(data_valid), 256, 300), dtype='float16')
 for i, doc in enumerate(data_valid):
-    x_valid[i] = get_embedding(vectors, doc)
+    x_valid[i] = get_embedding(model, doc)
 
 np.save('data/fasttext/IMDB_valid.npy', x_valid)
 print('valid saved')
@@ -86,7 +90,7 @@ print('labels saved')
 
 untagged = np.zeros((len(data_unsupervised), 256, 300), dtype='float16')
 for i, doc in enumerate(data_unsupervised):
-    untagged[i] = get_embedding(vectors, doc)
+    untagged[i] = get_embedding(model, doc)
 
 np.save('data/fasttext/IMDB_untagged.npy', untagged)
 
@@ -98,7 +102,7 @@ print('untagged saved')
 
 x = np.zeros((len(data_test), 256, 300), dtype='float16')
 for i, doc in enumerate(data_test):
-    x[i] = get_embedding(vectors, doc)
+    x[i] = get_embedding(model, doc)
 
 np.save('data/fasttext/IMDB_test.npy', x)
 
