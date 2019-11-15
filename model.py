@@ -106,6 +106,7 @@ class DSC(object):
                 self.x_valid = x_valid
                 self.y_valid = y_valid
                 self.n_clusters = n_clusters
+                self.p = np.empty((20000, 100))
                 self.filepath = save_dir + 'model.h5'
                 super(UpdateParams, self).__init__()
 

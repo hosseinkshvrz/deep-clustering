@@ -1,12 +1,14 @@
 # Deep Sentiment Clustering
 import os
 from time import time
+
 import numpy as np
 import keras.backend as K
 from keras.callbacks import Callback
 from keras.engine.topology import Layer, InputSpec
 from keras.models import Model
 from keras import callbacks
+from keras.utils import Sequence
 from sklearn.cluster import KMeans
 from sklearn.utils import shuffle
 
@@ -77,9 +79,103 @@ class ClusteringLayer(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
+class DataGenerator(Sequence):
+    def __init__(self, directory, data_files, doc_dims, batch_size=256):
+        """
+        :param directory: a string determining the directory containing the files
+        :param data_files: a dictionary with two keys: labeled and unlabeled. Each maps to a list of file names.
+        :param batch_size: the size of the batches
+        """
+        self.directory = directory
+        self.labeled_files = data_files['labeled']
+        self.unlabeled_files = data_files['unlabeled']
+        self.doc_dims = doc_dims
+        self.batch_size = batch_size
+        # self.current_file_type = 'labeled'
+        # self.current_file_idx = 0
+        # self.ite = 0
+        # self.x = np.load(self.directory + self.labeled_files[self.current_file_idx])
+        # self.y = np.load(self.directory + self.labels[self.labeled_files[self.current_file_idx]])
+
+    def __len__(self):
+        """Denotes the number of batches per epoch"""
+        # return int(np.floor((len(self.labels) * 5000) / self.batch_size))
+        return int(np.floor((len(self.labeled_files) + len(self.unlabeled_files)) / self.batch_size))
+
+    def __getitem__(self, index):
+        """Generate one batch of data"""
+
+        # if (self.ite + 1) * self.batch_size < len(self.x):
+        #     data = self.x[self.ite*self.batch_size:(self.ite+1)*self.batch_size]
+        #     label = self.y[self.ite*self.batch_size:(self.ite+1)*self.batch_size]
+        #     self.ite += 1
+        # else:
+        #     data = self.x[self.ite * self.batch_size:len(self.x)]
+        #     label = self.y[self.ite * self.batch_size:len(self.y)]
+        #     self.current_file_idx += 1
+        #     self.ite = 0
+        #     if self.current_file_idx >= len(self.labeled_files) and self.current_file_type == 'labeled':
+        #         current_file_type = 'unlabeled'
+        #         self.current_file_idx = 0
+        #     if self.current_file_idx >= len(self.unlabeled_files) and self.current_file_type == 'unlabeled':
+        #         return data, label
+        #     if self.current_file_type == 'labeled':
+        #         self.x = np.load(self.directory + self.labeled_files[self.current_file_idx])
+        #         self.y = np.load(self.directory + self.labels[self.labeled_files[self.current_file_idx]])
+        #     else:
+        #         self.x = np.load(self.directory + self.unlabeled_files[self.current_file_idx])
+        #         self.y = np.load(self.directory + self.labels[self.unlabeled_files[self.current_file_idx]])
+        #     data = np.append(data, self.x[:self.batch_size-len(data)], axis=0)
+        #     label = np.append(label, self.y[:self.batch_size-len(data)], axis=0)
+
+        n_labeled = self.batch_size * len(self.labeled_files) // (len(self.labeled_files) + len(self.unlabeled_files))
+        n_unlabeled = self.batch_size - n_labeled
+        labeled_indexes = self.labeled_indexes[index * n_labeled:(index + 1) * n_labeled]
+        unlabeled_indexes = self.unlabeled_indexes[index * n_unlabeled:(index + 1) * n_unlabeled]
+
+        # Find list of IDs
+        labeled_temp = [self.labeled_files[k] for k in labeled_indexes]
+        unlabeled_temp = [self.unlabeled_files[k] for k in unlabeled_indexes]
+
+        data, label = self.__data_generation(labeled_temp, unlabeled_temp)
+
+        print('batch number:', index)
+        print('data:', data.shape)
+        print('label:', label.shape)
+        return data, label
+
+    def on_epoch_end(self):
+        """Updates indexes after each epoch"""
+        self.labeled_indexes = np.arange(len(self.labeled_files))
+        self.unlabeled_indexes = np.arange(len(self.unlabeled_files))
+        np.random.shuffle(self.labeled_indexes)
+        np.random.shuffle(self.unlabeled_indexes)
+
+    def __data_generation(self, labeled, unlabeled):
+        # data : (n_samples, *dim, n_channels)
+        # Initialization
+        files = labeled + unlabeled
+        data = np.empty((len(files), *self.doc_dims))
+        label = np.empty(len(files), *self.doc_dims)
+
+        # Generate data
+        for i, file_name in enumerate(files):
+            data[i,] = np.load(self.directory + file_name)
+            label[i,] = np.load(self.directory + file_name)
+
+        data, label = shuffle(data, label)
+
+        return data, label
+
+
 class DSC(object):
-    def __init__(self, doc_dims, latent_dims, ae_type, n_clusters, alpha=1.0, init='glorot_uniform'):
+    def __init__(self, directory, train_files, valid_file, labels, doc_dims, latent_dims, ae_type,
+                 n_clusters, alpha=1.0, init='glorot_uniform'):
         super(DSC, self).__init__()
+        self.directory = directory
+        self.train_files = train_files
+        self.valid_file = valid_file
+        self.labels = labels
         self.doc_dims = doc_dims
         self.latent_dims = latent_dims
         self.ae_type = ae_type
@@ -150,38 +246,44 @@ class DSC(object):
         cb = [update_params]
         self.model.fit(x=x, y=update_params.p, batch_size=batch_size, epochs=max_iter, callbacks=cb)
 
-    def pretrain(self, x, y=None, x_valid=None, y_valid=None, optimizer='adam', epochs=200,
+    def pretrain(self, optimizer='adam', epochs=200,
                  batch_size=256, save_dir='results/'):
         print('Pre-training ...')
+
+        training_generator = DataGenerator(self.directory, data_files=self.train_files,
+                                           doc_dims=self.doc_dims, batch_size=batch_size)
+
         self.auto_encoder.summary()
         self.auto_encoder.compile(optimizer=optimizer, loss='mse')
 
         csv_logger = callbacks.CSVLogger(save_dir + 'pretrain_log.csv')
         cb = [csv_logger]
-        if y is not None:
-            class PrintACC(Callback):
-                def __init__(self, x, y, n_clusters):
-                    self.x = x
-                    self.y = y
-                    self.n_clusters = n_clusters
-                    super(PrintACC, self).__init__()
 
-                def on_epoch_end(self, epoch, logs=None):
-                    if epoch % 10 != 0:
-                        return
-                    feature_model = Model(self.model.input,
-                                          self.model.get_layer('encoder_%d' % (int((len(self.model.layers) - 1) / 2) - 1)).output)
-                    features = feature_model.predict(self.x)
-                    km = KMeans(n_clusters=self.n_clusters, n_init=20, n_jobs=4)
-                    y_pred = km.fit_predict(features)
+        class PrintACC(Callback):
+            def __init__(self, v_file, n_clusters):
+                self.v_file = v_file
+                self.n_clusters = n_clusters
+                super(PrintACC, self).__init__()
 
-                    print('acc: {}'.format(inspect_clusters(self.y, y_pred, self.n_clusters)))
+            def on_epoch_end(self, epoch, logs=None):
+                if epoch % 10 != 0:
+                    return
+                x = np.load(self.v_file['data'])
+                y = np.load(self.v_file['label'])
+                feature_model = Model(self.model.input,
+                                      self.model.get_layer(
+                                          'encoder_%d' % (int((len(self.model.layers) - 1) / 2) - 1)).output)
+                features = feature_model.predict(x)
+                km = KMeans(n_clusters=self.n_clusters, n_init=20, n_jobs=4)
+                y_pred = km.fit_predict(features)
 
-            cb.append(PrintACC(x_valid, y_valid, self.n_clusters))
+                print('acc: {}'.format(inspect_clusters(y, y_pred, self.n_clusters)))
+
+        cb.append(PrintACC(self.valid_file, self.n_clusters))
 
         # begin pre-training
         t0 = time()
-        self.auto_encoder.fit(x, x, batch_size=batch_size, epochs=epochs, callbacks=cb)
+        self.auto_encoder.fit_generator(generator=training_generator, epochs=epochs, callbacks=cb)
         print('Pre-training time: %ds' % round(time() - t0))
         self.auto_encoder.save(save_dir + 'ae_weights.h5')
         print('Pre-trained weights are saved to %sae_weights.h5' % save_dir)
@@ -200,17 +302,51 @@ class DSC(object):
     def compile(self, optimizer='sgd', loss='kld'):
         self.model.compile(optimizer=optimizer, loss=loss)
 
-    def fit(self, x, y=None, x_valid=None, y_valid=None, max_iter=2e4, batch_size=256, tol=1e-3,
+    def get_batch(self, labeled_files, unlabeled_files, labeled_indexes, unlabeled_indexes, batch_index, batch_size):
+        n_labeled = batch_size * len(labeled_files) // (len(labeled_files) + len(unlabeled_files))
+        n_unlabeled = batch_size - n_labeled
+        labeled_indexes = labeled_indexes[batch_index * n_labeled:(batch_index + 1) * n_labeled]
+        unlabeled_indexes = unlabeled_indexes[batch_index * n_unlabeled:(batch_index + 1) * n_unlabeled]
+
+        labeled_temp = [labeled_files[k] for k in labeled_indexes]
+        unlabeled_temp = [unlabeled_files[k] for k in unlabeled_indexes]
+
+        files = labeled_temp + unlabeled_temp
+        data = np.empty((len(files), *self.doc_dims))
+        label = np.empty(len(files), dtype=int)
+
+        # Generate data
+        for i, file_name in enumerate(files):
+            data[i,] = np.load(self.directory + file_name)
+            label[i] = self.labels[file_name]
+
+        data, label = shuffle(data, label)
+
+        return data, label
+
+    def fit(self, max_iter=2e4, batch_size=256, tol=1e-3,
             update_interval=140, save_dir='results/'):
         print('Update interval', update_interval)
         save_embedding_interval = max_iter // 10
         print('Save embedding interval', save_embedding_interval)
 
+        labeled_files = self.train_files['labeled']
+        unlabeled_files = self.train_files['unlabeled']
+        n_samples = len(labeled_files) + len(unlabeled_files)
+        n_batches = int(np.floor(n_samples / batch_size))
+
         # Step 1: initialize cluster centers using k-means
         print('Initializing cluster centers with k-means.')
+        labeled_indexes = np.arange(len(labeled_files))
+        unlabeled_indexes = np.arange(len(unlabeled_files))
+        np.random.shuffle(labeled_indexes)
+        np.random.shuffle(unlabeled_indexes)
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
-        y_pred = kmeans.fit_predict(self.encoder.predict(x))
-        y_pred_last = np.copy(y_pred)
+        data = np.empty((0, *self.doc_dims), dtype='float16')
+        for i in range(n_batches):
+            x, _ = self.get_batch(labeled_files, unlabeled_files, labeled_indexes, unlabeled_indexes, i, batch_size)
+            data = np.append(data, x, axis=0)
+        kmeans.fit(self.encoder.predict(data))
         self.model.get_layer(name='clustering').set_weights([kmeans.cluster_centers_])
 
         # Step 2: deep clustering
@@ -218,77 +354,59 @@ class DSC(object):
         loss = 0
         interval_loss = np.inf
         least_loss = np.inf
-        chunks = ['IMDB_dauntagged_5000.npy', 'IMDB_dauntagged_10000.npy', 'IMDB_dauntagged_15000.npy',
-                  'IMDB_dauntagged_20000.npy', 'IMDB_dauntagged_25000.npy', 'IMDB_dauntagged_30000.npy',
-                  'IMDB_dauntagged_35000.npy', 'IMDB_dauntagged_40000.npy', 'IMDB_dauntagged_45000.npy',
-                  'IMDB_dauntagged_50000.npy']
-        tag_index = 0
-        untag_index = 0
-        index_array = np.arange(x.shape[0])
-        n_tagged = 2 * batch_size // 7
-        n_untagged = 5 * batch_size // 7
-        y_untagged = np.zeros(5000)
-        y_untagged += 2
+        w = np.zeros((1, self.n_clusters), dtype='int32')
+
         for ite in range(int(max_iter)):
-            if ite % len(chunks) == 0:
-                chunk_index = (ite // len(chunks)) % len(chunks)
-                x_untagged = np.load(path + '/data/' + chunks[chunk_index])
-                x_untagged, y_untagged = shuffle(x_untagged, y_untagged)
+            labeled_indexes = np.arange(len(labeled_files))
+            unlabeled_indexes = np.arange(len(unlabeled_files))
+            np.random.shuffle(labeled_indexes)
+            np.random.shuffle(unlabeled_indexes)
 
-            idx = index_array[tag_index * n_tagged: min((tag_index + 1) * n_tagged, len(x))]
-            tag_index = tag_index + 1 if (tag_index + 1) * n_tagged <= len(x) else 0
-            batch = x[idx]
-            label = y[idx]
+            features = np.empty((0, *self.latent_dims), dtype='float16')
+            y_pred = np.empty(0, dtype='int32')
+            y_true = np.empty(0, dtype='int32')
 
-            idx = index_array[untag_index * n_untagged: min((untag_index + 1) * n_untagged, len(x_untagged))]
-            untag_index = untag_index + 1 if (untag_index + 1) * n_tagged <= len(x_untagged) else 0
-            batch = np.append(batch, x_untagged[idx], axis=0)
-            label = np.append(label, y_untagged[idx], axis=0)
+            for i in range(n_batches):
+                x, y = self.get_batch(labeled_files, unlabeled_files, labeled_indexes, unlabeled_indexes, i, batch_size)
 
-            batch, label = shuffle(batch, label)
-            print('batch shape:', batch.shape)
+                if ite % save_embedding_interval == 0:
+                    feature_model = Model(self.model.input,
+                                          self.model.get_layer('encoder_%d' % (len(self.latent_dims) - 1)).output)
+                    features = np.append(features, feature_model.predict(x), axis=0)
+
+                q = self.model.predict(x, verbose=0)
+                p = self.target_distribution(q, y, w)
+
+                y_pred = np.append(y_pred, q.argmax(1))
+                y_true = np.append(y_true, y)
+
+                if ite != 0:
+                    loss = self.model.train_on_batch(x=x, y=p)
+                    interval_loss += loss
+
+            _, w = inspect_clusters(y_true, y_pred, self.n_clusters)
+
+            x_valid = np.load(self.valid_file['data'])
+            y_valid = np.load(self.valid_file['label'])
+            q_valid = self.model.predict(x_valid, verbose=0)
+            y_pred_valid = q_valid.argmax(1)
+            acc, _ = inspect_clusters(y_valid, y_pred_valid, self.n_clusters)
+            print('Iter {}, Acc: {} '.format(ite, acc),
+                  '; interval loss=', interval_loss,
+                  '; last epoch loss=', loss)
+            if acc > best_acc:
+                best_acc = acc
+                print('saving model to:', save_dir + 'DEC_model_acc_' + str(ite) + '.h5')
+                self.model.save(save_dir + 'DEC_model_acc_' + str(ite) + '.h5')
+            if interval_loss < least_loss:
+                least_loss = interval_loss
+                print('saving model to:', save_dir + 'DEC_model_loss_' + str(ite) + '.h5')
+                self.model.save(save_dir + 'DEC_model_loss_' + str(ite) + '.h5')
+
+            interval_loss = 0
 
             if ite % save_embedding_interval == 0:
-                feature_model = Model(self.model.input,
-                                      self.model.get_layer('encoder_%d' % (len(self.latent_dims) - 1)).output)
-                features = feature_model.predict(x)
                 np.save(save_dir + 'embedding_' + str(ite) + '.npy', features)
-            if ite % update_interval == 0:
-                q = self.model.predict(batch, verbose=0)
-                q_valid = self.model.predict(x_valid, verbose=0)
 
-                # evaluate the clustering performance
-                y_pred = q.argmax(1)
-                y_pred_valid = q_valid.argmax(1)
-                _, w = inspect_clusters(label, y_pred, self.n_clusters)
-                acc, _ = inspect_clusters(y_valid, y_pred_valid, self.n_clusters)
-                print('Iter {}, Acc: {} '.format(ite, acc),
-                      '; interval loss=', interval_loss,
-                      '; last epoch loss=', loss)
-                if acc > best_acc:
-                    best_acc = acc
-                    print('saving model to:', save_dir + 'DEC_model_acc_' + str(ite) + '.h5')
-                    self.model.save(save_dir + 'DEC_model_acc_' + str(ite) + '.h5')
-                if interval_loss < least_loss:
-                    least_loss = interval_loss
-                    print('saving model to:', save_dir + 'DEC_model_loss_' + str(ite) + '.h5')
-                    self.model.save(save_dir + 'DEC_model_loss_' + str(ite) + '.h5')
-
-                interval_loss = 0
-
-                p = self.target_distribution(q, label, w)
-
-                # check stop criterion
-                delta_label = np.sum(y_pred != y_pred_last).astype(np.float32) / y_pred.shape[0]
-                y_pred_last = np.copy(y_pred)
-                if ite > 0 and delta_label < tol:
-                    print('delta_label ', delta_label, '< tol ', tol)
-                    print('Reached tolerance threshold. Stopping training.')
-                    break
-
-            loss = self.model.train_on_batch(x=batch, y=p)
-            interval_loss += loss
-
-        # save the trained model
         print('saving model to:', save_dir + 'DEC_model_final.h5')
         self.model.save(save_dir + 'DEC_model_final.h5')

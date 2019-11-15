@@ -75,7 +75,6 @@ if __name__ == "__main__":
             y=y,
             x_valid=x_valid,
             y_valid=y_valid,
-            tol=tol,
             max_iter=max_iter,
             batch_size=batch_size,
             update_interval=update_interval,
