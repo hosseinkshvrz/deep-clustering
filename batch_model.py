@@ -351,8 +351,6 @@ class DSC(object):
 
         # Step 2: deep clustering
         best_acc = 0
-        loss = 0
-        interval_loss = np.inf
         least_loss = np.inf
         w = np.zeros((1, self.n_clusters), dtype='int32')
 
@@ -365,6 +363,8 @@ class DSC(object):
             features = np.empty((0, *self.latent_dims), dtype='float16')
             y_pred = np.empty(0, dtype='int32')
             y_true = np.empty(0, dtype='int32')
+
+            epoch_loss = 0
 
             for i in range(n_batches):
                 x, y = self.get_batch(labeled_files, unlabeled_files, labeled_indexes, unlabeled_indexes, i, batch_size)
@@ -382,7 +382,8 @@ class DSC(object):
 
                 if ite != 0:
                     loss = self.model.train_on_batch(x=x, y=p)
-                    interval_loss += loss
+                    epoch_loss += loss
+                    print('epoch: ', ite, ', batch: ', i, ', loss = ', loss)
 
             _, w = inspect_clusters(y_true, y_pred, self.n_clusters)
 
@@ -391,19 +392,15 @@ class DSC(object):
             q_valid = self.model.predict(x_valid, verbose=0)
             y_pred_valid = q_valid.argmax(1)
             acc, _ = inspect_clusters(y_valid, y_pred_valid, self.n_clusters)
-            print('Iter {}, Acc: {} '.format(ite, acc),
-                  '; interval loss=', interval_loss,
-                  '; last epoch loss=', loss)
+            print('Iter {}, Acc: {} '.format(ite, acc), '; epoch loss=', epoch_loss)
             if acc > best_acc:
                 best_acc = acc
                 print('saving model to:', save_dir + 'DEC_model_acc_' + str(ite) + '.h5')
                 self.model.save(save_dir + 'DEC_model_acc_' + str(ite) + '.h5')
-            if interval_loss < least_loss:
-                least_loss = interval_loss
+            if epoch_loss < least_loss:
+                least_loss = epoch_loss
                 print('saving model to:', save_dir + 'DEC_model_loss_' + str(ite) + '.h5')
                 self.model.save(save_dir + 'DEC_model_loss_' + str(ite) + '.h5')
-
-            interval_loss = 0
 
             if ite % save_embedding_interval == 0:
                 np.save(save_dir + 'embedding_' + str(ite) + '.npy', features)
