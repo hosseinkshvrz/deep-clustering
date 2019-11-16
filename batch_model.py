@@ -140,9 +140,9 @@ class DataGenerator(Sequence):
 
         data, label = self.__data_generation(labeled_temp, unlabeled_temp)
 
-        print('\nbatch number:', index)
-        print('data:', data.shape)
-        print('label:', label.shape)
+        # print('\nbatch number:', index)
+        # print('data:', data.shape)
+        # print('label:', label.shape)
         return data, label
 
     def on_epoch_end(self):
@@ -253,8 +253,8 @@ class DSC(object):
         labeled_temp = [labeled_files[k] for k in labeled_indexes]
         unlabeled_temp = [unlabeled_files[k] for k in unlabeled_indexes]
 
-        print('len labeled: ', len(labeled_temp))
-        print('len unlabeled: ', len(unlabeled_temp))
+        # print('\nlen labeled: ', len(labeled_temp))
+        # print('len unlabeled: ', len(unlabeled_temp))
 
         files = labeled_temp + unlabeled_temp
         data = np.empty((len(files), *self.doc_dims), dtype='float16')
@@ -265,13 +265,13 @@ class DSC(object):
             data[i,] = np.load(self.directory + file_name)
             label[i] = self.labels[file_name]
 
-        print('\nbatch number: ', batch_index)
-        print('data shape: ', data.shape)
-        print('label shape: ', label.shape)
+        # print('batch number: ', batch_index)
+        # print('data shape: ', data.shape)
+        # print('label shape: ', label.shape)
 
         data, label = shuffle(data, label)
 
-        print('shuffled')
+        # print('shuffled')
 
         return data, label
 
@@ -292,7 +292,6 @@ class DSC(object):
         np.random.shuffle(unlabeled_indexes)
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
         data = np.empty((0, *self.latent_dims), dtype='float16')
-        print('**** before batch loop ****')
         for i in range(n_batches):
             x, _ = self.get_batch(labeled_files, unlabeled_files, labeled_indexes, unlabeled_indexes, i, batch_size)
             data = np.append(data, self.encoder.predict(x), axis=0)
@@ -310,7 +309,7 @@ class DSC(object):
         w = np.zeros((1, self.n_clusters), dtype='int32')
 
         for ite in range(int(max_iter)):
-            print('epoch ', str(ite), '/', str(int(max_iter)))
+            print('Epoch ', str(ite+1), '/', str(int(max_iter)))
             labeled_indexes = np.arange(len(labeled_files))
             unlabeled_indexes = np.arange(len(unlabeled_files))
             np.random.shuffle(labeled_indexes)
@@ -325,14 +324,13 @@ class DSC(object):
 
             for i in range(n_batches):
                 x, y = self.get_batch(labeled_files, unlabeled_files, labeled_indexes, unlabeled_indexes, i, batch_size)
-                print('batch loaded')
+                # print('batch loaded')
 
                 if ite % save_embedding_interval == 0:
                     feature_model = Model(self.model.input,
                                           self.model.get_layer('encoder_%d' % (len(self.latent_dims) - 1)).output)
                     features = np.append(features, feature_model.predict(x), axis=0)
                     labels = np.append(labels, y, axis=0)
-                    print('batch embedding saved')
 
                 q = self.model.predict(x, verbose=0)
                 p = self.target_distribution(q, y, w)
@@ -340,12 +338,16 @@ class DSC(object):
                 y_pred = np.append(y_pred, q.argmax(1), axis=0)
                 y_true = np.append(y_true, y, axis=0)
 
+                print('\n' + ' ' * 2 + str(i + 1) + '/' + str(n_batches) + ' ' +
+                      '[' + '>' * (((i + 1) * 30 // n_batches) - 1) +
+                      '.' * (30 - ((i + 1) * 30 // n_batches)) + ']', end=' ')
+
                 if ite != 0:
                     loss = self.model.train_on_batch(x=x, y=p)
                     epoch_loss += loss
-                    print('batch ', i, '/', n_batches, '; loss = ', loss)
+                    print('- loss = ', loss, end='')
 
-            print('start inspecting cluster')
+            print('\nstart inspecting cluster')
             _, w = inspect_clusters(y_true, y_pred, self.n_clusters)
 
             print('start validating model')
@@ -365,6 +367,7 @@ class DSC(object):
             if ite % save_embedding_interval == 0:
                 np.save(save_dir + 'embedding_' + str(ite) + '.npy', features)
                 np.save(save_dir + 'label_' + str(ite) + '.npy', labels)
+                print('batch embedding saved')
 
         print('saving model to:', save_dir + 'DEC_model_final.h5')
         self.model.save(save_dir + 'DEC_model_final.h5')
