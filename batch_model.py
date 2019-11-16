@@ -156,8 +156,8 @@ class DataGenerator(Sequence):
         # data : (n_samples, *dim, n_channels)
         # Initialization
         files = labeled + unlabeled
-        data = np.empty((len(files), *self.doc_dims))
-        label = np.empty((len(files), *self.doc_dims))
+        data = np.empty((len(files), *self.doc_dims), dtype='float16')
+        label = np.empty((len(files), *self.doc_dims), dtype='float16')
 
         # Generate data
         for i, file_name in enumerate(files):
@@ -245,8 +245,6 @@ class DSC(object):
         self.model.compile(optimizer=optimizer, loss=loss)
 
     def get_batch(self, labeled_files, unlabeled_files, labeled_indexes, unlabeled_indexes, batch_index, batch_size):
-        print('batch number: ', batch_index)
-
         n_labeled = batch_size * len(labeled_files) // (len(labeled_files) + len(unlabeled_files))
         n_unlabeled = batch_size - n_labeled
         labeled_indexes = labeled_indexes[batch_index * n_labeled:(batch_index + 1) * n_labeled]
@@ -267,6 +265,7 @@ class DSC(object):
             data[i,] = np.load(self.directory + file_name)
             label[i] = self.labels[file_name]
 
+        print('\nbatch number: ', batch_index)
         print('data shape: ', data.shape)
         print('label shape: ', label.shape)
 
@@ -278,7 +277,6 @@ class DSC(object):
 
     def fit(self, max_iter=2e4, batch_size=256, tol=1e-3,
             update_interval=140, save_dir='results/'):
-        print('Update interval', update_interval)
         save_embedding_interval = max_iter // 10
         print('Save embedding interval', save_embedding_interval)
 
@@ -286,7 +284,6 @@ class DSC(object):
         unlabeled_files = self.train_files['unlabeled']
         n_samples = len(labeled_files) + len(unlabeled_files)
         n_batches = int(np.floor(n_samples / batch_size))
-
         # Step 1: initialize cluster centers using k-means
         print('Initializing cluster centers with k-means.')
         labeled_indexes = np.arange(len(labeled_files))
@@ -294,17 +291,18 @@ class DSC(object):
         np.random.shuffle(labeled_indexes)
         np.random.shuffle(unlabeled_indexes)
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
-        data = np.empty((0, *self.doc_dims), dtype='float16')
+        data = np.empty((0, *self.latent_dims), dtype='float16')
         print('**** before batch loop ****')
         for i in range(n_batches):
             x, _ = self.get_batch(labeled_files, unlabeled_files, labeled_indexes, unlabeled_indexes, i, batch_size)
-            data = np.append(data, x, axis=0)
-        kmeans.fit(self.encoder.predict(data))
+            data = np.append(data, self.encoder.predict(x), axis=0)
+        kmeans.fit(data)
         print('**** fit kmeans with all data ****')
         self.model.get_layer(name='clustering').set_weights([kmeans.cluster_centers_])
 
         # Step 2: deep clustering
         x_valid = np.load(self.valid_file['data'])
+        x_valid = x_valid.astype('float16')
         y_valid = np.load(self.valid_file['label'])
 
         best_acc = 0
@@ -339,8 +337,8 @@ class DSC(object):
                 q = self.model.predict(x, verbose=0)
                 p = self.target_distribution(q, y, w)
 
-                y_pred = np.append(y_pred, q.argmax(1))
-                y_true = np.append(y_true, y)
+                y_pred = np.append(y_pred, q.argmax(1), axis=0)
+                y_true = np.append(y_true, y, axis=0)
 
                 if ite != 0:
                     loss = self.model.train_on_batch(x=x, y=p)
