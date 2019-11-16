@@ -141,9 +141,11 @@ class DataGenerator(Sequence):
         data, label = self.__data_generation(labeled_temp, unlabeled_temp)
 
         print('batch number:', index)
+        print('data:', data.dtype)
         print('data:', data.shape)
         print('label:', label.shape)
-        return data, label
+        # return data, label
+        return data
 
     def on_epoch_end(self):
         """Updates indexes after each epoch"""
@@ -157,7 +159,7 @@ class DataGenerator(Sequence):
         # Initialization
         files = labeled + unlabeled
         data = np.empty((len(files), *self.doc_dims))
-        label = np.empty(len(files), *self.doc_dims)
+        label = np.empty((len(files), *self.doc_dims))
 
         # Generate data
         for i, file_name in enumerate(files):
@@ -187,65 +189,6 @@ class DSC(object):
         self.auto_encoder, self.encoder = dataset_func()
         clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(self.encoder.output)
         self.model = Model(inputs=self.encoder.input, outputs=clustering_layer)
-
-    def maybe_new_fit(self, x, y=None, x_valid=None, y_valid=None, max_iter=2e4, batch_size=256,
-                      update_interval=140, save_dir='results/'):
-        print('Update interval', update_interval)
-
-        # Step 1: initialize cluster centers using k-means
-        print('Initializing cluster centers with k-means.')
-        kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
-        y_pred = kmeans.fit_predict(self.encoder.predict(x))
-        self.model.get_layer(name='clustering').set_weights([kmeans.cluster_centers_])
-
-        class UpdateParams(Callback):
-            def __init__(self, x, y, x_valid, y_valid, n_clusters):
-                self.x = x
-                self.y = y
-                self.x_valid = x_valid
-                self.y_valid = y_valid
-                self.n_clusters = n_clusters
-                self.filepath = save_dir + 'model.h5'
-                super(UpdateParams, self).__init__()
-
-            @staticmethod
-            def target_distribution(q, y_true, w):
-                weight = q ** 2 / q.sum(0)
-                for index in range(len(weight)):
-                    if y_true[index] == 1:
-                        weight[index] = w[0]
-                    elif y_true[index] == 0:
-                        weight[index] = 1 - w[0]
-                weight = (weight.T / weight.sum(1)).T
-                return weight
-
-            def on_epoch_end(self, epoch, logs=None):
-                if epoch % update_interval != 0:
-                    return
-                # A callback has access to its associated model through the class property self.model
-                q = self.model.predict(self.x, verbose=0)
-                q_valid = self.model.predict(self.x_valid, verbose=0)
-                # evaluate the clustering performance
-                y_pred = q.argmax(1)
-                y_pred_valid = q_valid.argmax(1)
-                _, w = inspect_clusters(y, y_pred, self.n_clusters)
-                acc, _ = inspect_clusters(y_valid, y_pred_valid, self.n_clusters)
-                print('Iter {}, Acc: {} '.format(epoch, acc))
-                self.p = self.target_distribution(q, y, w)
-                monitor_op = np.greater
-                best = -np.Inf
-                if monitor_op(acc, best):
-                    print('\nEpoch %05d: %s improved from %0.5f to %0.5f, saving model to %s'
-                          % (epoch + 1, 'acc', best, acc, self.filepath))
-                    best = acc
-                    self.model.save(self.filepath, overwrite=True)
-                else:
-                    print('\nEpoch %05d: %s did not improve from %0.5f'
-                          % (epoch + 1, 'acc', best))
-
-        update_params = UpdateParams(x, y, x_valid, y_valid, self.n_clusters)
-        cb = [update_params]
-        self.model.fit(x=x, y=update_params.p, batch_size=batch_size, epochs=max_iter, callbacks=cb)
 
     def pretrain(self, optimizer='adam', epochs=200,
                  batch_size=256, save_dir='results/'):
