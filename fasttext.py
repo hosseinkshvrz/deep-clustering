@@ -114,8 +114,86 @@ print(x.shape, ' test saved')
 #
 
 path = '/home/bsabeti/framework/data/'
-file = 'IMDB_dauntagged_25000.npy'
-data = np.load(path + file)
-for i, d in enumerate(data):
-    np.save(path + 'bert/' + 'unlabeled_' + str(i+1) + '.npy', d)
+files = ['IMDB_dauntagged_5000.npy', 'IMDB_dauntagged_10000.npy', 'IMDB_dauntagged_15000.npy',
+         'IMDB_dauntagged_20000.npy', 'IMDB_dauntagged_25000.npy', 'IMDB_dauntagged_30000.npy',
+         'IMDB_dauntagged_35000.npy', 'IMDB_dauntagged_40000.npy', 'IMDB_dauntagged_45000.npy',
+         'IMDB_dauntagged_50000.npy']
+labels = dict()
+counter = 1
 
+data = np.load(path + files[0])
+for d in data:
+    dfile = 'unlabeled_' + str(counter) + '.npy'
+    np.save(path + 'bert/' + dfile, d)
+    labels[dfile] = 2
+    counter += 1
+
+data = np.load(path + files[1])
+for d in data:
+    dfile = 'unlabeled_' + str(counter) + '.npy'
+    np.save(path + 'bert/' + dfile, d)
+    labels[dfile] = 2
+    counter += 1
+
+data = np.load(path + files[2])
+for d in data:
+    dfile = 'unlabeled_' + str(counter) + '.npy'
+    np.save(path + 'bert/' + dfile, d)
+    labels[dfile] = 2
+    counter += 1
+
+data = np.load(path + files[3])
+for d in data:
+    dfile = 'unlabeled_' + str(counter) + '.npy'
+    np.save(path + 'bert/' + dfile, d)
+    labels[dfile] = 2
+    counter += 1
+
+data = np.load(path + files[4])
+for d in data:
+    dfile = 'unlabeled_' + str(counter) + '.npy'
+    np.save(path + 'bert/' + dfile, d)
+    labels[dfile] = 2
+    counter += 1
+
+data = np.load(path + files[5])
+for d in data:
+    dfile = 'unlabeled_' + str(counter) + '.npy'
+    np.save(path + 'bert/' + dfile, d)
+    labels[dfile] = 2
+    counter += 1
+
+data = np.load(path + files[6])
+for d in data:
+    dfile = 'unlabeled_' + str(counter) + '.npy'
+    np.save(path + 'bert/' + dfile, d)
+    labels[dfile] = 2
+    counter += 1
+
+data = np.load(path + files[7])
+for d in data:
+    dfile = 'unlabeled_' + str(counter) + '.npy'
+    np.save(path + 'bert/' + dfile, d)
+    labels[dfile] = 2
+    counter += 1
+
+data = np.load(path + files[8])
+for d in data:
+    dfile = 'unlabeled_' + str(counter) + '.npy'
+    np.save(path + 'bert/' + dfile, d)
+    labels[dfile] = 2
+    counter += 1
+
+data = np.load(path + files[9])
+for d in data:
+    dfile = 'unlabeled_' + str(counter) + '.npy'
+    np.save(path + 'bert/' + dfile, d)
+    labels[dfile] = 2
+    counter += 1
+
+# counter = 1
+# for d in data:
+#     dfile = 'labeled_' + str(counter) + '.npy'
+#     np.save(path + 'bert/' + dfile, d)
+#     labels[dfile] = l[counter-1]
+#     counter += 1
