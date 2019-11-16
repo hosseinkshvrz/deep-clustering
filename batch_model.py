@@ -345,7 +345,7 @@ class DSC(object):
                 if ite != 0:
                     loss = self.model.train_on_batch(x=x, y=p)
                     epoch_loss += loss
-                    print('- loss = ', loss, end='')
+                    print('- loss =', loss, end='')
 
             print('\nstart inspecting cluster')
             _, w = inspect_clusters(y_true, y_pred, self.n_clusters)
@@ -354,7 +354,7 @@ class DSC(object):
             q_valid = self.model.predict(x_valid, verbose=0)
             y_pred_valid = q_valid.argmax(1)
             acc, _ = inspect_clusters(y_valid, y_pred_valid, self.n_clusters)
-            print('acc = ', acc, '; epoch loss = ', epoch_loss)
+            print('acc =', acc, '; epoch loss= ', epoch_loss)
             if acc > best_acc:
                 best_acc = acc
                 print('saving model to:', save_dir + 'DEC_model_acc_' + str(ite) + '.h5')
