@@ -111,3 +111,11 @@ np.save('data/fasttext/IMDB_telabel.npy', y_test)
 
 print(x.shape, ' test saved')
 
+#
+
+path = '/home/bsabeti/framework/data/'
+file = 'IMDB_dauntagged_25000.npy'
+data = np.load(path + file)
+for i, d in enumerate(data):
+    np.save(path + 'bert/' + 'unlabeled_' + str(i+1) + '.npy', d)
+
