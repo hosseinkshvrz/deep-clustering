@@ -144,8 +144,7 @@ class DataGenerator(Sequence):
         print('data:', data.dtype)
         print('data:', data.shape)
         print('label:', label.shape)
-        # return data, label
-        return data
+        return data, label
 
     def on_epoch_end(self):
         """Updates indexes after each epoch"""
