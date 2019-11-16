@@ -41,6 +41,7 @@ class IMDB(Dataset):
         with open('/home/bsabeti/framework/data/labels.json') as json_file:
             labels = json.load(json_file)
         doc_dims = np.load(directory + labeled[0]).shape
+        print('dims: ', doc_dims)
 
         return directory, train_files, valid_file, labels, doc_dims
 

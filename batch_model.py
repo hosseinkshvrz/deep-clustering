@@ -140,8 +140,7 @@ class DataGenerator(Sequence):
 
         data, label = self.__data_generation(labeled_temp, unlabeled_temp)
 
-        print('batch number:', index)
-        print('data:', data.dtype)
+        print('\nbatch number:', index)
         print('data:', data.shape)
         print('label:', label.shape)
         return data, label
