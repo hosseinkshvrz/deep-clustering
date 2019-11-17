@@ -300,9 +300,6 @@ class DSC(object):
         self.model.get_layer(name='clustering').set_weights([kmeans.cluster_centers_])
 
         # Step 2: deep clustering
-        x_valid = np.load(self.valid_file['data'])
-        x_valid = x_valid.astype('float16')
-        y_valid = np.load(self.valid_file['label'])
 
         best_acc = 0
         least_loss = np.inf
@@ -351,9 +348,9 @@ class DSC(object):
             _, w = inspect_clusters(y_true, y_pred, self.n_clusters)
 
             print('start validating model')
-            q_valid = self.model.predict(x_valid, verbose=0)
+            q_valid = self.model.predict(np.load(self.valid_file['data']), verbose=0)
             y_pred_valid = q_valid.argmax(1)
-            acc, _ = inspect_clusters(y_valid, y_pred_valid, self.n_clusters)
+            acc, _ = inspect_clusters(np.load(self.valid_file['label']), y_pred_valid, self.n_clusters)
             print('acc =', acc, '; epoch loss= ', epoch_loss)
             if acc > best_acc:
                 best_acc = acc
