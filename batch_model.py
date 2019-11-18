@@ -317,7 +317,7 @@ class DSC(object):
             y_pred = np.empty(0, dtype='int32')
             y_true = np.empty(0, dtype='int32')
 
-            epoch_loss = 0
+            epoch_loss = np.inf
 
             for i in range(n_batches):
                 x, y = self.get_batch(labeled_files, unlabeled_files, labeled_indexes, unlabeled_indexes, i, batch_size)
@@ -344,7 +344,7 @@ class DSC(object):
                     epoch_loss += loss
                     print('- loss =', loss, end='')
 
-            print('\nstart inspecting cluster')
+            print('\nstart inspecting clusters')
             _, w = inspect_clusters(y_true, y_pred, self.n_clusters)
 
             print('start validating model')
