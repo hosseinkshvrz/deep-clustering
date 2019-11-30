@@ -232,14 +232,14 @@ class DSC(object):
 
     @staticmethod
     def target_distribution(q, y_true, w):
-        weight = q ** 2 / q.sum(0)
-        for index in range(len(weight)):
-            if y_true[index] == 1:
-                weight[index] = w[0]
-            elif y_true[index] == 0:
-                weight[index] = 1 - w[0]
-        weight = (weight.T / weight.sum(1)).T
-        return weight
+        # weight = q ** 2 / q.sum(0)
+        # for index in range(len(weight)):
+        #     if y_true[index] == 1:
+        #         weight[index] = w[0]
+        #     elif y_true[index] == 0:
+        #         weight[index] = 1 - w[0]
+        # weight = (weight.T / weight.sum(1)).T
+        return w
 
     def compile(self, optimizer='sgd', loss='kld'):
         self.model.compile(optimizer=optimizer, loss=loss)

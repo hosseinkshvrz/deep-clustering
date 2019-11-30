@@ -70,3 +70,25 @@ class IMDB(Dataset):
         # original data in IMDB dataset is in order
         x, y = shuffle(x, y)
         return x, y
+
+
+class Reuters(Dataset):
+    def __init__(self, *args, **kwargs):
+        super(Reuters, self).__init__(*args, **kwargs)
+
+    def get_data(self):
+        print('Here')
+        directory = '/home/bsabeti/framework/data/reuters/'
+        files = [f for f in listdir(directory) if isfile(join(directory, f))]
+
+        print('size: ', len(files))
+
+        train_files = {'labeled': files, 'unlabeled': []}
+        valid_file = {'data': '/home/bsabeti/framework/data/reuters_valid.npy',
+                      'label': '/home/bsabeti/framework/data/reuters_valabel.npy'}
+        with open('/home/bsabeti/framework/data/reuters/other_files/labels.json') as json_file:
+            labels = json.load(json_file)
+        doc_dims = np.load(directory + files[0]).shape
+        print('dims: ', doc_dims)
+
+        return directory, train_files, valid_file, labels, doc_dims
