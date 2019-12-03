@@ -37,25 +37,20 @@ def inspect_clusters(y_true, y_pred, n_clusters):
     w = np.zeros((4, n_clusters), dtype=np.int64)
     weight = np.zeros((4, n_clusters), dtype=np.int64)
     for index in range(len(y_true)):
-        if y_true[index] == 0:
-            w[0][y_pred[index]] += 1
-        elif y_true[index] == 1:
-            w[1][y_pred[index]] += 1
-        elif y_true[index] == 2:
-            w[2][y_pred[index]] += 1
-        elif y_true[index] == 3:
-            w[3][y_pred[index]] += 1
-        else:
-            # unsupervised mode
-            continue
+        w[y_true[index]][y_pred[index]] += 1
 
-    order = [1, 2, 3, 0]
+    print(w)
+
+    # order = [1, 2, 3, 0]
+    order = [0, 2, 3, 1]
     for i in order:
         cluster_index = w[i].argmax()
         tmp = np.zeros(n_clusters, dtype='int64')
         tmp[cluster_index] = 1
         weight[i] = tmp
-        w = np.delete(w, w[i].argmax(), 1)
+        w[:, cluster_index] = 0
+        print(w)
+        print(weight)
 
     labeled = 0
     true_labeled = 0

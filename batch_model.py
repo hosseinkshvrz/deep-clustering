@@ -232,14 +232,23 @@ class DSC(object):
 
     @staticmethod
     def target_distribution(q, y_true, w):
-        # weight = q ** 2 / q.sum(0)
+        weight = q ** 2 / q.sum(0)
+        weight = (weight.T / weight.sum(1)).T
         # for index in range(len(weight)):
         #     if y_true[index] == 1:
         #         weight[index] = w[0]
         #     elif y_true[index] == 0:
         #         weight[index] = 1 - w[0]
-        # weight = (weight.T / weight.sum(1)).T
-        return w
+        for index in range(len(weight)):
+            if y_true[index] == 0:
+                weight[index] = w[0]
+            elif y_true[index] == 1:
+                weight[index] = w[1]
+            elif y_true[index] == 2:
+                weight[index] = w[2]
+            elif y_true[index] == 3:
+                weight[index] = w[3]
+        return weight
 
     def compile(self, optimizer='sgd', loss='kld'):
         self.model.compile(optimizer=optimizer, loss=loss)
@@ -303,7 +312,8 @@ class DSC(object):
 
         best_acc = 0
         least_loss = np.inf
-        w = np.zeros((1, self.n_clusters), dtype='int32')
+        # w = np.zeros((1, self.n_clusters), dtype='int32')
+        w = np.zeros((4, self.n_clusters), dtype='int32')
 
         for ite in range(int(max_iter)):
             print('Epoch ', str(ite+1), '/', str(int(max_iter)))
