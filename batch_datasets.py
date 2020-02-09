@@ -1,4 +1,5 @@
 import os
+import pickle
 from os import listdir
 from os.path import isfile, join
 import json
@@ -79,11 +80,16 @@ class Reuters(Dataset):
     def get_data(self):
         print('Here')
         directory = '/home/bsabeti/framework/data/reuters/'
+        mask_file = '/home/bsabeti/framework/data/reuters/other_files/reuters_mask.txt'
         files = [f for f in listdir(directory) if isfile(join(directory, f))]
-
         print('size: ', len(files))
-
         train_files = {'labeled': files, 'unlabeled': []}
+
+        if not os.path.exists(mask_file):
+            np.random.shuffle(files)
+            with open(mask_file, 'wb') as file:
+                pickle.dump(files, file)
+
         valid_file = {'data': '/home/bsabeti/framework/data/reuters_valid.npy',
                       'label': '/home/bsabeti/framework/data/reuters_valabel.npy'}
         with open('/home/bsabeti/framework/data/reuters/other_files/labels.json') as json_file:
@@ -91,4 +97,4 @@ class Reuters(Dataset):
         doc_dims = np.load(directory + files[0]).shape
         print('dims: ', doc_dims)
 
-        return directory, train_files, valid_file, labels, doc_dims
+        return directory, train_files, valid_file, labels, doc_dims, mask_file

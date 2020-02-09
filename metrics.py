@@ -12,6 +12,9 @@ import random
 #         else:
 #             # unsupervised mode
 #             continue
+#
+#     print(w)
+#
 #     for index in range(n_clusters):
 #         if w[0][index] < 0:
 #             w[0][index] = 0
@@ -22,6 +25,9 @@ import random
 #                 w[0][index] = 1
 #             else:
 #                 w[0][index] = 0
+#
+#     print(w)
+#
 #     labeled = 0
 #     true_labeled = 0
 #     for index in range(len(y_true)):
@@ -33,11 +39,14 @@ import random
 #
 #     return float(true_labeled / labeled), w
 
+
 def inspect_clusters(y_true, y_pred, n_clusters):
-    w = np.zeros((4, n_clusters), dtype=np.int64)
-    weight = np.zeros((4, n_clusters), dtype=np.int64)
+    w = np.zeros((n_clusters, n_clusters), dtype=np.int64)
+    weight = np.zeros((n_clusters, n_clusters), dtype=np.int64)
     for index in range(len(y_true)):
-        w[y_true[index]][y_pred[index]] += 1
+        # if the sample was labeled
+        if y_true[index] < w.shape[0]:
+            w[y_true[index]][y_pred[index]] += 1
 
     print(w)
 
@@ -55,8 +64,9 @@ def inspect_clusters(y_true, y_pred, n_clusters):
     labeled = 0
     true_labeled = 0
     for index in range(len(y_true)):
-        labeled += 1
-        if weight[y_true[index]][y_pred[index]] == 1:
-            true_labeled += 1
+        if y_true[index] < w.shape[0]:
+            labeled += 1
+            if weight[y_true[index]][y_pred[index]] == 1:
+                true_labeled += 1
 
     return float(true_labeled / labeled), weight

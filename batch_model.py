@@ -1,7 +1,7 @@
 # Deep Sentiment Clustering
 import os
 from time import time
-
+import pickle
 import numpy as np
 import keras.backend as K
 from keras.callbacks import Callback
@@ -92,42 +92,13 @@ class DataGenerator(Sequence):
         self.doc_dims = doc_dims
         self.batch_size = batch_size
         self.on_epoch_end()
-        # self.current_file_type = 'labeled'
-        # self.current_file_idx = 0
-        # self.ite = 0
-        # self.x = np.load(self.directory + self.labeled_files[self.current_file_idx])
-        # self.y = np.load(self.directory + self.labels[self.labeled_files[self.current_file_idx]])
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
-        # return int(np.floor((len(self.labels) * 5000) / self.batch_size))
         return int(np.floor((len(self.labeled_files) + len(self.unlabeled_files)) / self.batch_size))
 
     def __getitem__(self, index):
         """Generate one batch of data"""
-
-        # if (self.ite + 1) * self.batch_size < len(self.x):
-        #     data = self.x[self.ite*self.batch_size:(self.ite+1)*self.batch_size]
-        #     label = self.y[self.ite*self.batch_size:(self.ite+1)*self.batch_size]
-        #     self.ite += 1
-        # else:
-        #     data = self.x[self.ite * self.batch_size:len(self.x)]
-        #     label = self.y[self.ite * self.batch_size:len(self.y)]
-        #     self.current_file_idx += 1
-        #     self.ite = 0
-        #     if self.current_file_idx >= len(self.labeled_files) and self.current_file_type == 'labeled':
-        #         current_file_type = 'unlabeled'
-        #         self.current_file_idx = 0
-        #     if self.current_file_idx >= len(self.unlabeled_files) and self.current_file_type == 'unlabeled':
-        #         return data, label
-        #     if self.current_file_type == 'labeled':
-        #         self.x = np.load(self.directory + self.labeled_files[self.current_file_idx])
-        #         self.y = np.load(self.directory + self.labels[self.labeled_files[self.current_file_idx]])
-        #     else:
-        #         self.x = np.load(self.directory + self.unlabeled_files[self.current_file_idx])
-        #         self.y = np.load(self.directory + self.labels[self.unlabeled_files[self.current_file_idx]])
-        #     data = np.append(data, self.x[:self.batch_size-len(data)], axis=0)
-        #     label = np.append(label, self.y[:self.batch_size-len(data)], axis=0)
 
         n_labeled = self.batch_size * len(self.labeled_files) // (len(self.labeled_files) + len(self.unlabeled_files))
         n_unlabeled = self.batch_size - n_labeled
@@ -140,9 +111,6 @@ class DataGenerator(Sequence):
 
         data, label = self.__data_generation(labeled_temp, unlabeled_temp)
 
-        # print('\nbatch number:', index)
-        # print('data:', data.shape)
-        # print('label:', label.shape)
         return data, label
 
     def on_epoch_end(self):
@@ -171,7 +139,7 @@ class DataGenerator(Sequence):
 
 class DSC(object):
     def __init__(self, directory, train_files, valid_file, labels, doc_dims, latent_dims, ae_type,
-                 n_clusters, alpha=1.0, init='glorot_uniform'):
+                 n_clusters, mask_file, mask_label=0.0, alpha=1.0, init='glorot_uniform'):
         super(DSC, self).__init__()
         self.directory = directory
         self.train_files = train_files
@@ -182,6 +150,12 @@ class DSC(object):
         self.ae_type = ae_type
         self.n_clusters = n_clusters
         self.alpha = alpha
+        self.mask_label = mask_label
+        with open(mask_file, 'rb') as file:
+            self.mask_indexes = pickle.load(file)
+        print('len mask file:', len(self.mask_indexes))
+        self.mask_indexes = self.mask_indexes[:int(len(self.mask_indexes)*self.mask_label)]
+        print('len mask file:', len(self.mask_indexes))
         cls = AutoEncoder(self.doc_dims, self.latent_dims, init=init)
         dataset_func = getattr(cls, ae_type)
         self.auto_encoder, self.encoder = dataset_func()
@@ -253,7 +227,8 @@ class DSC(object):
     def compile(self, optimizer='sgd', loss='kld'):
         self.model.compile(optimizer=optimizer, loss=loss)
 
-    def get_batch(self, labeled_files, unlabeled_files, labeled_indexes, unlabeled_indexes, batch_index, batch_size):
+    def get_batch(self, labeled_files, unlabeled_files, labeled_indexes,
+                  unlabeled_indexes, batch_index, batch_size):
         n_labeled = batch_size * len(labeled_files) // (len(labeled_files) + len(unlabeled_files))
         n_unlabeled = batch_size - n_labeled
         labeled_indexes = labeled_indexes[batch_index * n_labeled:(batch_index + 1) * n_labeled]
@@ -262,27 +237,20 @@ class DSC(object):
         labeled_temp = [labeled_files[k] for k in labeled_indexes]
         unlabeled_temp = [unlabeled_files[k] for k in unlabeled_indexes]
 
-        # print('\nlen labeled: ', len(labeled_temp))
-        # print('len unlabeled: ', len(unlabeled_temp))
-
         files = labeled_temp + unlabeled_temp
         data = np.empty((len(files), *self.doc_dims), dtype='float16')
-        label = np.empty(len(files), dtype='int32')
+        labels = np.empty(len(files), dtype='int32')
 
         # Generate data
         for i, file_name in enumerate(files):
             data[i,] = np.load(self.directory + file_name)
-            label[i] = self.labels[file_name]
+            labels[i] = self.labels[file_name]
+            if file_name in self.mask_indexes:
+                labels[i] = self.n_clusters
 
-        # print('batch number: ', batch_index)
-        # print('data shape: ', data.shape)
-        # print('label shape: ', label.shape)
+        data, labels = shuffle(data, labels)
 
-        data, label = shuffle(data, label)
-
-        # print('shuffled')
-
-        return data, label
+        return data, labels
 
     def fit(self, max_iter=2e4, batch_size=256, tol=1e-3,
             update_interval=140, save_dir='results/'):
@@ -312,8 +280,7 @@ class DSC(object):
 
         best_acc = 0
         least_loss = np.inf
-        # w = np.zeros((1, self.n_clusters), dtype='int32')
-        w = np.zeros((4, self.n_clusters), dtype='int32')
+        w = np.zeros((self.n_clusters, self.n_clusters), dtype='int32')
 
         for ite in range(int(max_iter)):
             print('Epoch ', str(ite+1), '/', str(int(max_iter)))
@@ -327,10 +294,15 @@ class DSC(object):
             y_pred = np.empty(0, dtype='int32')
             y_true = np.empty(0, dtype='int32')
 
-            epoch_loss = np.inf
+            epoch_loss = 0
 
             for i in range(n_batches):
-                x, y = self.get_batch(labeled_files, unlabeled_files, labeled_indexes, unlabeled_indexes, i, batch_size)
+                x, y = self.get_batch(labeled_files,
+                                      unlabeled_files,
+                                      labeled_indexes,
+                                      unlabeled_indexes,
+                                      i,
+                                      batch_size)
                 # print('batch loaded')
 
                 if ite % save_embedding_interval == 0:
@@ -355,7 +327,8 @@ class DSC(object):
                     print('- loss =', loss, end='')
 
             print('\nstart inspecting clusters')
-            _, w = inspect_clusters(y_true, y_pred, self.n_clusters)
+            if ite == 0:
+                _, w = inspect_clusters(y_true, y_pred, self.n_clusters)
 
             print('start validating model')
             q_valid = self.model.predict(np.load(self.valid_file['data']), verbose=0)

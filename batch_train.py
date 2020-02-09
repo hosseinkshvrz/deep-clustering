@@ -25,10 +25,11 @@ if __name__ == "__main__":
     parser.add_argument('--update_interval', default=200, type=int)
     parser.add_argument('--tol', default=0.001, type=float)
     parser.add_argument('--save_dir', default='results/')
-    parser.add_argument('--n_clusters', default=100)
+    parser.add_argument('--n_clusters', default=100, type=int)
     parser.add_argument('--latent_dims', default='[128]', type=str)
     parser.add_argument('--ae_type', default='lstm_ae', type=str)
     parser.add_argument('--train_mode', default='semi-supervised', choices=['supervised', 'semi-supervised'])
+    parser.add_argument('--mask_label', default=0.0, type=float)
     args = parser.parse_args()
 
     print(args)
@@ -47,14 +48,23 @@ if __name__ == "__main__":
     latent_dims = ast.literal_eval(args.latent_dims)
     ae_type = args.ae_type
     train_mode = args.train_mode
+    mask_label = args.mask_label
 
     module = batch_datasets
     dataset_class = getattr(module, dataset)
     dataset_obj = dataset_class(train_mode)
-    directory, train_files, valid_file, labels, doc_dims = dataset_obj.get_data()
+    directory, train_files, valid_file, labels, doc_dims, mask_file = dataset_obj.get_data()
 
-    dsc = DSC(directory=directory, train_files=train_files, valid_file=valid_file, labels=labels,
-              doc_dims=doc_dims, latent_dims=latent_dims, ae_type=ae_type, n_clusters=n_clusters)
+    dsc = DSC(directory=directory,
+              train_files=train_files,
+              valid_file=valid_file,
+              labels=labels,
+              doc_dims=doc_dims,
+              latent_dims=latent_dims,
+              ae_type=ae_type,
+              n_clusters=n_clusters,
+              mask_label=mask_label,
+              mask_file=mask_file)
 
     dsc.pretrain(epochs=pretrain_epochs,
                  batch_size=batch_size,

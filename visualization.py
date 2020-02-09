@@ -76,12 +76,14 @@ if __name__ == "__main__":
     # y_unk = unk_components[:, 1]
     # np.save(directory + yunk, y_unk)
 
-    x_pos = np.load('xpos87.npy')
-    x_neg = np.load('xneg87.npy')
-    y_pos = np.load('ypos87.npy')
-    y_neg = np.load('yneg87.npy')
-    x_unk = np.load('xunk87.npy')
-    y_unk = np.load('yunk87.npy')
+    dir = '/home/hossein/Documents/DEC-keras-master/recent/embeddings/'
+
+    x_pos = np.load(dir + 'xpos1060.npy')
+    x_neg = np.load(dir + 'xneg1060.npy')
+    y_pos = np.load(dir + 'ypos1060.npy')
+    y_neg = np.load(dir + 'yneg1060.npy')
+    x_unk = np.load(dir + 'xunk1060.npy')
+    y_unk = np.load(dir + 'yunk1060.npy')
 
     plt.scatter(x_unk, y_unk, color='gray', alpha=0.5)
     plt.scatter(x_pos, y_pos, color='green', alpha=0.5)
