@@ -50,8 +50,8 @@ def inspect_clusters(y_true, y_pred, n_clusters):
 
     print(w)
 
-    # order = [1, 2, 3, 0]
-    order = [0, 2, 3, 1]
+    # order = [0, 2, 3, 1]
+    order = [0, 1]
     for i in order:
         cluster_index = w[i].argmax()
         tmp = np.zeros(n_clusters, dtype='int64')

@@ -218,10 +218,10 @@ class DSC(object):
                 weight[index] = w[0]
             elif y_true[index] == 1:
                 weight[index] = w[1]
-            elif y_true[index] == 2:
-                weight[index] = w[2]
-            elif y_true[index] == 3:
-                weight[index] = w[3]
+            # elif y_true[index] == 2:
+            #     weight[index] = w[2]
+            # elif y_true[index] == 3:
+            #     weight[index] = w[3]
         return weight
 
     def compile(self, optimizer='sgd', loss='kld'):

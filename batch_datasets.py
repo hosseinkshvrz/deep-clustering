@@ -27,24 +27,28 @@ class IMDB(Dataset):
     def get_data(self):
         print('Here')
         directory = '/home/bsabeti/framework/data/bert/'
+        mask_file = '/home/bsabeti/framework/data/imdb_mask.txt'
         files = [f for f in listdir(directory) if isfile(join(directory, f))]
-        labeled = [f for f in files if f.startswith('labeled_')]
-        unlabeled = list()
-        if self.mode == 'semi-supervised':
-            unlabeled = [f for f in files if f.startswith('unlabeled_')]
+        files = [f for f in files if f.startswith('labeled_')]
+        print('size: ', len(files))
 
-        print('labeled size: ', len(labeled))
-        print('unlabeled size: ', len(unlabeled))
+        train_files = {'labeled': files, 'unlabeled': []}
 
-        train_files = {'labeled': labeled, 'unlabeled': unlabeled}
+        if not os.path.exists(mask_file):
+            np.random.shuffle(files)
+            with open(mask_file, 'wb') as file:
+                pickle.dump(files, file)
+
         valid_file = {'data': '/home/bsabeti/framework/data/IMDB_valid.npy',
                       'label': '/home/bsabeti/framework/data/IMDB_valabel.npy'}
+
         with open('/home/bsabeti/framework/data/labels.json') as json_file:
             labels = json.load(json_file)
-        doc_dims = np.load(directory + labeled[0]).shape
+
+        doc_dims = np.load(directory + files[0]).shape
         print('dims: ', doc_dims)
 
-        return directory, train_files, valid_file, labels, doc_dims
+        return directory, train_files, valid_file, labels, doc_dims, mask_file
 
     def get_test_data(self):
         print('In the beginning of get test data')
