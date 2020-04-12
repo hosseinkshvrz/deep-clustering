@@ -27,20 +27,19 @@ class AutoEncoder:
 
         # internal layers in encoder
         for i in range(self.n_stacks - 1):
-            h = LSTM(self.latent_dims[i], name='encoder_%d' % i)(h)
+            h = LSTM(self.latent_dims[i], return_sequences=True, name='encoder_%d' % i)(h)
 
         # hidden layer
         h = LSTM(self.latent_dims[-1], name='encoder_%d' % (self.n_stacks - 1))(h)  # hidden layer, features are extracted from here
 
-        y = h
+        y = RepeatVector(self.doc_dims[0])(h)
 
         # internal layers in decoder
         for i in range(self.n_stacks-1, 0, -1):
-            y = LSTM(self.latent_dims[i], name='decoder_%d' % i)(y)
+            y = LSTM(self.latent_dims[i], return_sequences=True, name='decoder_%d' % i)(y)
 
         # output
-        decoded = RepeatVector(self.doc_dims[0])(y)
-        y = LSTM(self.doc_dims[1], name='decoder_0', return_sequences=True)(decoded)
+        y = LSTM(self.doc_dims[1], return_sequences=True, name='decoder_0')(y)
 
         return Model(inputs=self.input_layer, outputs=y, name='AE'), Model(inputs=self.input_layer, outputs=h, name='encoder')
 
@@ -49,20 +48,19 @@ class AutoEncoder:
 
         # internal layers in encoder
         for i in range(self.n_stacks - 1):
-            h = GRU(self.latent_dims[i], name='encoder_%d' % i)(h)
+            h = GRU(self.latent_dims[i], return_sequences=True, name='encoder_%d' % i)(h)
 
         # hidden layer
         h = GRU(self.latent_dims[-1], name='encoder_%d' % (self.n_stacks - 1))(h)  # hidden layer, features are extracted from here
 
-        y = h
+        y = RepeatVector(self.doc_dims[0])(h)
 
         # internal layers in decoder
         for i in range(self.n_stacks-1, 0, -1):
-            y = GRU(self.latent_dims[i], name='decoder_%d' % i)(y)
+            y = GRU(self.latent_dims[i], return_sequences=True, name='decoder_%d' % i)(y)
 
         # output
-        decoded = RepeatVector(self.doc_dims[0])(y)
-        y = GRU(self.doc_dims[1], name='decoder_0', return_sequences=True)(decoded)
+        y = GRU(self.doc_dims[1], return_sequences=True, name='decoder_0')(y)
 
         return Model(inputs=self.input_layer, outputs=y, name='AE'), Model(inputs=self.input_layer, outputs=h, name='encoder')
 

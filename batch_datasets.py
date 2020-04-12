@@ -102,3 +102,30 @@ class Reuters(Dataset):
         print('dims: ', doc_dims)
 
         return directory, train_files, valid_file, labels, doc_dims, mask_file
+
+
+    def get_test_data(self):
+        print('In the beginning of get test data')
+        with open(join(path, 'data/aclImdb/test/data.txt')) as data_file:
+            for line in data_file:
+                self.data_test.append(line.strip())
+        with open(join(path, 'data/aclImdb/test/label.txt')) as target_file:
+            for line in target_file:
+                self.label_test.append(int(line.strip()))
+        print('before loading')
+        filepath = path + '/data/fasttext/IMDB_test.npy'
+        exists = os.path.isfile(filepath)
+        if not exists:
+            return None
+            # x = self.bc.encode(self.data_test)
+            # np.save(filepath, x)
+        else:
+            x = np.load(filepath)
+        print('loaded!!!!')
+        y = np.asarray(self.label_test)
+
+        print('IMDB test data shape ', x.shape)
+        print("IMDB number of clusters: ", np.unique(y).size)
+        # original data in IMDB dataset is in order
+        x, y = shuffle(x, y)
+        return x, y

@@ -268,7 +268,7 @@ class DSC(object):
         np.random.shuffle(labeled_indexes)
         np.random.shuffle(unlabeled_indexes)
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
-        data = np.empty((0, *self.latent_dims), dtype='float16')
+        data = np.empty((0, self.latent_dims[-1]), dtype='float16')
         for i in range(n_batches):
             x, _ = self.get_batch(labeled_files, unlabeled_files, labeled_indexes, unlabeled_indexes, i, batch_size)
             data = np.append(data, self.encoder.predict(x), axis=0)
@@ -289,7 +289,7 @@ class DSC(object):
             np.random.shuffle(labeled_indexes)
             np.random.shuffle(unlabeled_indexes)
 
-            features = np.empty((0, *self.latent_dims), dtype='float16')
+            features = np.empty((0, self.latent_dims[-1]), dtype='float16')
             labels = np.empty(0, dtype='int32')
             y_pred = np.empty(0, dtype='int32')
             y_true = np.empty(0, dtype='int32')
@@ -306,9 +306,9 @@ class DSC(object):
                 # print('batch loaded')
 
                 if ite % save_embedding_interval == 0:
-                    feature_model = Model(self.model.input,
-                                          self.model.get_layer('encoder_%d' % (len(self.latent_dims) - 1)).output)
-                    features = np.append(features, feature_model.predict(x), axis=0)
+                    # feature_model = Model(self.model.input,
+                    #                       self.model.get_layer('encoder_%d' % (len(self.latent_dims) - 1)).output)
+                    features = np.append(features, self.encoder.predict(x), axis=0)
                     labels = np.append(labels, y, axis=0)
 
                 q = self.model.predict(x, verbose=0)

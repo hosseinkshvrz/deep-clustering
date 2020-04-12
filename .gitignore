@@ -201,3 +201,5 @@ data/
 .idea/
 
 exp_*.out
+embeddings
+figures
